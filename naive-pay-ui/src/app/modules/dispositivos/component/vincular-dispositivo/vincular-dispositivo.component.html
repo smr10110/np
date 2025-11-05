@@ -1,0 +1,32 @@
+<div class="auth-card">
+    <h2>Vincular Nuevo Dispositivo</h2>
+
+    @switch (step) {
+        @case ('request') {
+            <form (ngSubmit)="requestCode()" class="form">
+                <p>Ingresa el email con el que te registraste en NaivePay para enviarte un codigo de verificacion.</p>
+                <label>Email</label>
+                <input name="identifier" [(ngModel)]="identifier" required placeholder="tu@email.com" />
+                <button type="submit" [disabled]="loading">{{ loading ? 'Enviando...' : 'Enviar Codigo' }}</button>
+                <p class="error" *ngIf="error">{{ error }}</p>
+            </form>
+        }
+        @case ('verify') {
+            <form (ngSubmit)="verifyCode()" class="form">
+                <p>Introduce el codigo de 6 digitos enviado a <strong>{{ identifier }}</strong></p>
+                <label>Codigo de Verificacion</label>
+                <input name="code" [(ngModel)]="code" required maxlength="6" />
+                <button type="submit" [disabled]="loading">{{ loading ? 'Verificando...' : 'Verificar' }}</button>
+                <div class="hint">Al verificar se vinculara este equipo.</div>
+                <p class="error" *ngIf="errorMsg">{{ errorMsg }}</p>
+            </form>
+        }
+        @case ('success') {
+            <div class="success">
+                <h3>Dispositivo vinculado</h3>
+                <p>Sesion iniciada correctamente.</p>
+                <a class="btn" routerLink="/">Ir al inicio</a>
+            </div>
+        }
+    }
+</div>

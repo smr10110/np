@@ -1,0 +1,67 @@
+{
+	"info": {
+		"_postman_id": "7bb2abfb-093f-4622-8ec4-c50b2769326c",
+		"name": "CryptApp",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "crypt_and_save",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"msgDtoPlainText\": \"mi texto sin cifrar\",\n    \"msgDtoKey\":\"123456789asdfghj\"\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/message/cifrar",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"message",
+						"cifrar"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get_and_decrypt",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"msgDtoId\": 1,\n    \"msgDtoKey\":\"123456789asdfghj\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/message/decifrar",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"message",
+						"decifrar"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

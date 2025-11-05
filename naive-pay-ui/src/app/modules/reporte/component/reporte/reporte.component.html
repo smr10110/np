@@ -1,0 +1,85 @@
+<section>
+    <div class="admin-toggle" style="display: flex; justify-content: flex-end; align-items: center;">
+        <label class="switch">
+            <input type="checkbox" [(ngModel)]="isAdminMode">
+            <span class="slider"></span>
+        </label>
+        <span>{{ isAdminMode ? 'Administrador' : 'Usuario' }}</span>
+    </div>
+
+    <div class="tabs">
+        <button [class.active]="activeTab === 'reportes'" (click)="activeTab = 'reportes'">Reportes</button>
+        <button [class.active]="activeTab === 'analisis'" (click)="activeTab = 'analisis'">Análisis</button>
+    </div>
+    <div class="filters row" style="display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:8px;margin:8px 0;">
+        <label>From
+            <input #from type="date" [value]="fromDate">
+        </label>
+        <label>To
+            <input #to type="date" [value]="toDate">
+        </label>
+        <label>Description
+            <input #description type="text" placeholder="E.g., Food, Travel">
+        </label>
+        <label>Status
+            <select #status>
+                <option *ngFor="let s of availableStatuses" [value]="s">
+                    {{ s === '' ? 'ANY' : s }}
+                </option>
+            </select>
+        </label>
+        <label>Commerce
+            <input #commerce type="text" placeholder="Commerce Name">
+        </label>
+        <label>Min. Amount
+            <input #min type="number" step="0.01">
+        </label>
+        <label>Max. Amount
+            <input #max type="number" step="0.01">
+        </label>
+        <label *ngIf="isAdminMode">ID Usuario
+            <input type="text" placeholder="ID Usuario" [(ngModel)]="userId">
+        </label>
+    </div>
+    <div class="actions" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <div style="flex:1; display:flex; justify-content:flex-start;">
+            <button (click)="applyFilters(from.value, to.value, status.value, commerce.value, description.value, min.value, max.value, isAdminMode ? userId : undefined)">
+                Aplicar Filtros
+            </button>
+        </div>
+        <div style="flex:1; display:flex; justify-content:flex-end;">
+            <button (click)="resetFilters(from, to, status, commerce, description, min, max)">
+                Reiniciar Filtros
+            </button>
+        </div>
+    </div>
+
+    <div class="reporte-layout">
+        <div *ngIf="activeTab === 'reportes'">
+            <app-report-table
+                [pagedTxs]="pagedTxs"
+                [filteredTxs]="filteredTxs"
+                [currentPage]="currentPage"
+                [totalPages]="totalPages"
+                [loading]="loading"
+                [error]="error"
+                (prevPage)="prevPage()"
+                (nextPage)="nextPage()"
+            ></app-report-table>
+            <div style="width:100%; display:flex; justify-content:center; margin:18px 0 0 0;">
+                <button class="export-csv" (click)="downloadCsv()">
+                    Exportar a CSV
+                </button>
+            </div>
+        </div>
+        <div *ngIf="activeTab === 'analisis'">
+            <app-analisis
+                [report]="report"
+                [avg]="avgMonthly.value"
+                [txs]="filteredTxs"
+                [loading]="loading"
+                [error]="error"
+            ></app-analisis>
+        </div>
+    </div>
+</section>
