@@ -86,8 +86,33 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             final UUID jti = UUID.fromString(claims.getId());
 
 
-            if (authSessionService.findActiveByJti(jti).isEmpty()) {
+            // Validar que la sesión existe y está activa
+            var sessionOpt = authSessionService.findActiveByJti(jti);
+            if (sessionOpt.isEmpty()) {
                 write401(response, "TOKEN_CLOSED", "Sesión cerrada");
+                return;
+            }
+
+            // VALIDACIÓN ADICIONAL: Verificar que el dispositivo aún existe (FIX DE SEGURIDAD)
+            // Si device=null significa que el dispositivo fue eliminado/reemplazado
+            var session = sessionOpt.get();
+            if (session.getDevice() == null) {
+                // Sesión huérfana: dispositivo fue eliminado pero sesión quedó activa
+                // Cerrar sesión automáticamente
+                authSessionService.closeByJti(jti);
+                write401(response, "DEVICE_REMOVED", "Dispositivo no autorizado");
+                return;
+            }
+
+            // VALIDACIÓN DE FINGERPRINT: Verificar que el dispositivo del request coincide con el del token
+            String tokenFp = claims.get("deviceFingerprint", String.class);
+            String requestFp = request.getHeader("X-Device-Fingerprint");
+
+            if (requestFp != null && tokenFp != null && !requestFp.equals(tokenFp)) {
+                // El fingerprint del request no coincide con el del token
+                // Esto indica uso del token desde un dispositivo diferente
+                authSessionService.closeByJti(jti);
+                write401(response, "FINGERPRINT_MISMATCH", "Dispositivo no autorizado");
                 return;
             }
 

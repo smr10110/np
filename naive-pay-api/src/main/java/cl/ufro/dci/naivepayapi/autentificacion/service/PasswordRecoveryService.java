@@ -10,6 +10,8 @@ import cl.ufro.dci.naivepayapi.registro.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,28 +23,24 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 /**
- * Servicio para gestión de recuperación de contraseñas.
- * Maneja el flujo completo: generación de código, verificación y reseteo.
+ * Servicio de recuperación de contraseñas mediante código de verificación.
+ * Flujo: 1) Envío de código por email, 2) Validación + reseteo de contraseña.
  */
 @Service
 @RequiredArgsConstructor
 public class PasswordRecoveryService {
 
     private static final Logger logger = LoggerFactory.getLogger(PasswordRecoveryService.class);
-    private static final int CODE_EXPIRATION_MINUTES = 10;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    @Value("${naivepay.security.recovery-code-expiration-minutes:10}")
+    private int codeExpirationMinutes;
 
     private final PasswordRecoveryRepository passwordRecoveryRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
 
-    /**
-     * Genera y envía un código de recuperación al email del usuario.
-     * Invalida códigos PENDING anteriores antes de crear uno nuevo.
-     *
-     * @param email Email del usuario que solicita recuperación
-     */
     @Transactional
     public void sendRecoveryCode(String email) {
         var userOpt = userRepository.findByEmail(email);
@@ -53,103 +51,63 @@ public class PasswordRecoveryService {
 
         User user = userOpt.get();
 
-        // Invalidar códigos PENDING anteriores
-        passwordRecoveryRepository.findLatestByUserIdAndStatus(user.getId(), PasswordRecoveryStatus.PENDING)
-                .ifPresent(oldRecovery -> {
-                    oldRecovery.setPasStatus(PasswordRecoveryStatus.EXPIRED);
-                    passwordRecoveryRepository.save(oldRecovery);
-                });
-
-        String code = generateCode();
-        Instant now = Instant.now();
-        Instant expiration = now.plus(CODE_EXPIRATION_MINUTES, ChronoUnit.MINUTES);
-
-        PasswordRecovery recovery = PasswordRecovery.builder()
-                .user(user)
-                .pasCode(code)
-                .pasCreated(now)
-                .pasExpired(expiration)
-                .pasLastSent(now)
-                .pasResendCount(0)
-                .pasStatus(PasswordRecoveryStatus.PENDING)
-                .build();
-
+        //  Invalidar códigos anteriores y crear nuevo código
+        invalidatePendingCodes(user.getId());
+        PasswordRecovery recovery = createNewRecovery(user);
         passwordRecoveryRepository.save(recovery);
-        emailService.sendPasswordRecoveryEmail(email, code);
-        logger.info("Código de recuperación enviado exitosamente");
+
+        // Envío de email
+        sendRecoveryEmail(email, recovery.getPasCode());
+
+        logRecoveryCodeSent(user);
     }
 
-    /**
-     * Verifica que el código de recuperación sea válido.
-     *
-     * @param email Email del usuario
-     * @param code Código de 6 dígitos enviado por email
-     * @throws ResponseStatusException Si el código es inválido, expirado o ya usado
-     */
-    @Transactional
-    public void verifyCode(String email, String code) {
-        // Valida email, código, estado y expiración
-        validateRecoveryCode(email, code);
-    }
-
-    /**
-     * Resetea la contraseña del usuario usando el código de recuperación.
-     * Desbloquea la cuenta si estaba INACTIVE y envía email de confirmación.
-     *
-     * @param email Email del usuario
-     * @param code Código de recuperación válido
-     * @param newPassword Nueva contraseña (se guardará hasheada)
-     * @throws ResponseStatusException Si el código es inválido
-     */
     @Transactional
     public void resetPassword(String email, String code, String newPassword) {
-        // Valida el código y obtiene el registro de recuperación
+        if (newPassword == null || newPassword.length() < 8) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PASSWORD_TOO_SHORT");
+        }
+
+        // Validar código y actualizar contraseña en BD
         PasswordRecovery recovery = validateRecoveryCode(email, code);
         User user = recovery.getUser();
 
-        // Hashea y guarda la nueva contraseña
         user.getRegister().setHashedLoginPassword(passwordEncoder.encode(newPassword));
-
-        // Marca el código como usado
         recovery.setPasStatus(PasswordRecoveryStatus.USED);
         recovery.setPasUsed(Instant.now());
 
-        // Desbloquea la cuenta si estaba bloqueada
+        // Desbloquea cuenta si estaba bloqueada
         if (user.getState() == AccountState.INACTIVE) {
             user.setState(AccountState.ACTIVE);
-            logger.info("Cuenta desbloqueada tras proceso de recuperación");
         }
 
-        // Envía email de confirmación al usuario (notifica cambio exitoso)
-        emailService.sendPasswordChangeConfirmation(email, user.getNames());
+        // Email de confirmación
+        sendPasswordChangeEmail(email, user.getNames());
 
-        logger.info("Contraseña actualizada exitosamente mediante recuperación");
+        logPasswordReset(user);
     }
 
+    // === MÉTODOS HELPER: Validación ===
+
     /**
-     * Valida que el código de recuperación sea correcto y esté vigente.
-     * Verifica: existencia del usuario, código válido, estado PENDING y no expiración.
+     * Valida código de recuperación verificando usuario, código, estado y expiración.
      *
      * @param email Email del usuario
-     * @param code Código de recuperación
+     * @param code Código de 6 dígitos
      * @return PasswordRecovery válido
-     * @throws ResponseStatusException Si alguna validación falla
+     * @throws ResponseStatusException Si el código es inválido, usado o expirado
      */
     private PasswordRecovery validateRecoveryCode(String email, String code) {
-        // Busca el usuario
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID_CODE"));
 
-        // Busca el código de recuperación
         PasswordRecovery recovery = passwordRecoveryRepository.findByUser_IdAndPasCode(user.getId(), code)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID_CODE"));
 
-        // Verifica que el código no haya sido usado
         if (recovery.getPasStatus() != PasswordRecoveryStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CODE_ALREADY_USED");
         }
 
-        // Verifica que el código no haya expirado (10 minutos)
         if (recovery.getPasExpired().isBefore(Instant.now())) {
             recovery.setPasStatus(PasswordRecoveryStatus.EXPIRED);
             passwordRecoveryRepository.save(recovery);
@@ -159,12 +117,119 @@ public class PasswordRecoveryService {
         return recovery;
     }
 
+    // === MÉTODOS HELPER: Lógica de negocio ===
+
     /**
-     * Genera un código numérico aleatorio de 6 dígitos.
+     * Invalida códigos PENDING anteriores del usuario para evitar uso de códigos viejos.
      *
-     * @return Código de recuperación (000000-999999)
+     * @param userId ID del usuario
+     */
+    private void invalidatePendingCodes(Long userId) {
+        passwordRecoveryRepository.findLatestByUserIdAndStatus(userId, PasswordRecoveryStatus.PENDING)
+                .ifPresent(oldRecovery -> {
+                    oldRecovery.setPasStatus(PasswordRecoveryStatus.EXPIRED);
+                    passwordRecoveryRepository.save(oldRecovery);
+                });
+    }
+
+    /**
+     * Crea nuevo registro de recuperación con código generado y fecha de expiración.
+     *
+     * @param user Usuario solicitante
+     * @return Nuevo PasswordRecovery con estado PENDING
+     */
+    private PasswordRecovery createNewRecovery(User user) {
+        String code = generateCode();
+        Instant now = Instant.now();
+        Instant expiration = now.plus(codeExpirationMinutes, ChronoUnit.MINUTES);
+
+        return PasswordRecovery.builder()
+                .user(user)
+                .pasCode(code)
+                .pasCreated(now)
+                .pasExpired(expiration)
+                .pasLastSent(now)
+                .pasResendCount(0)
+                .pasStatus(PasswordRecoveryStatus.PENDING)
+                .build();
+    }
+
+    /**
+     * Genera código numérico aleatorio de 6 dígitos (000000-999999).
+     *
+     * @return Código de verificación
      */
     private String generateCode() {
         return String.format("%06d", SECURE_RANDOM.nextInt(1000000));
+    }
+
+    // === MÉTODOS HELPER: Operaciones secundarias (email) ===
+
+    /**
+     * Envía email con código de recuperación
+     *
+     * @param email Destinatario
+     * @param code Código de verificación
+     */
+    private void sendRecoveryEmail(String email, String code) {
+        try {
+            emailService.sendPasswordRecoveryEmail(email, code);
+            logger.debug("Email con código de recuperación enviado exitosamente");
+        } catch (Exception mailEx) {
+            logger.warn("Error al enviar email de recuperación a {}: {}", email, mailEx.getMessage());
+        }
+    }
+
+    /**
+     * Envía email de confirmación de cambio de contraseña, aislando errores.
+     *
+     * @param email Destinatario
+     * @param userName Nombre del usuario
+     */
+    private void sendPasswordChangeEmail(String email, String userName) {
+        try {
+            emailService.sendPasswordChangeConfirmation(email, userName);
+            logger.debug("Email de confirmación de cambio de contraseña enviado");
+        } catch (Exception mailEx) {
+            logger.warn("Error al enviar email de confirmación a {}: {}", email, mailEx.getMessage());
+        }
+    }
+
+    // === MÉTODOS HELPER: Observabilidad (logging con MDC) ===
+
+    /**
+     * Registra envío de código de recuperación con contexto distribuido (MDC).
+     *
+     * @param user Usuario que solicitó recuperación
+     */
+    private void logRecoveryCodeSent(User user) {
+        MDC.put("userId", String.valueOf(user.getId()));
+        MDC.put("email", user.getRegister().getEmail());
+        try {
+            logger.info("Código de recuperación enviado | userId={} | email={}",
+                user.getId(), user.getRegister().getEmail());
+        } finally {
+            MDC.remove("userId");
+            MDC.remove("email");
+        }
+    }
+
+    /**
+     * Registra reseteo exitoso de contraseña.
+     *
+     * @param user Usuario que reseteó contraseña
+     */
+    private void logPasswordReset(User user) {
+        MDC.put("userId", String.valueOf(user.getId()));
+        MDC.put("email", user.getRegister().getEmail());
+        MDC.put("accountUnblocked", String.valueOf(user.getState() == AccountState.ACTIVE));
+        try {
+            logger.info("Contraseña actualizada exitosamente | userId={} | email={} | cuentaDesbloqueada={}",
+                user.getId(), user.getRegister().getEmail(), user.getState() == AccountState.ACTIVE);
+        } finally {
+            MDC.remove("userId");
+            MDC.remove("email");
+            MDC.remove("accountUnblocked");
+        }
     }
 }

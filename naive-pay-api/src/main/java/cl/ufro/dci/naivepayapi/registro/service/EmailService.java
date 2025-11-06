@@ -84,8 +84,8 @@ public class EmailService {
                 "  2) Selecciona \"Olvidé mi contraseña\".\n" +
                 "  3) Escribe tu correo y solicita el código de verificación.\n" +
                 "  4) Revisa tu correo e ingresa el código.\n" +
-                "  5) Crea una nueva contraseña para tu cuenta.\n\n" +
-                "  6) Volvera a tener acceso a tu cuenta.\n\n" +
+                "  5) Crea una nueva contraseña para tu cuenta.\n" +
+                "  6) Volveras a tener acceso a tu cuenta.\n\n" +
                 "— Equipo Naive‑Pay"
         );
         mailSender.send(message);

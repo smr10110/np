@@ -88,7 +88,15 @@ public class DeviceService {
             // 1) Detach logs that point to the existing device
             logRepo.detachDeviceFromLogs(existing);
 
-            // 2) Liberar referencias de SESSION (FK -> NULL) y borrar fila antigua
+            // 2) CERRAR todas las sesiones activas del dispositivo antiguo (FIX DE SEGURIDAD)
+            try {
+                int closedSessions = sessionRepository.closeSessionsByDeviceFingerprint(existing.getFingerprint());
+                System.out.println("🔒 Sesiones cerradas al reemplazar dispositivo: " + closedSessions);
+            } catch (Exception e) {
+                System.err.println("⚠️ Error al cerrar sesiones del dispositivo antiguo: " + e.getMessage());
+            }
+
+            // 3) Liberar referencias de SESSION (FK -> NULL) y borrar fila antigua
             try {
                 sessionRepository.detachDeviceByFingerprint(existing.getFingerprint());
             } catch (Exception ignored) {

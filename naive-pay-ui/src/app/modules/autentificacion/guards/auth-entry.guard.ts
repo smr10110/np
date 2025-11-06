@@ -14,7 +14,7 @@ export const authEntryGuard: CanActivateFn = () => {
 
     const auth = inject(AutentificacionService);
     const router = inject(Router);
-    return auth.logoutSilent().pipe(
+    return auth.logout(false).pipe(
         map(() => router.createUrlTree(['/auth/login'], { queryParams: { reason: 'logout_ok' } }))
     );
 };

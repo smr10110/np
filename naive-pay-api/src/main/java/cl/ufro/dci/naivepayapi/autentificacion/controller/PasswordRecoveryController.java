@@ -24,12 +24,6 @@ public class PasswordRecoveryController {
         ));
     }
 
-    @PostMapping("/verify")
-    public ResponseEntity<Map<String, String>> verifyCode(@RequestBody ResetPasswordRequest request) {
-        passwordRecoveryService.verifyCode(request.getEmail(), request.getCode());
-        return ResponseEntity.ok(Map.of("message", "Código verificado correctamente"));
-    }
-
     @PostMapping("/reset")
     public ResponseEntity<Map<String, String>> resetPassword(@RequestBody ResetPasswordRequest request) {
         passwordRecoveryService.resetPassword(request.getEmail(), request.getCode(), request.getNewPassword());
