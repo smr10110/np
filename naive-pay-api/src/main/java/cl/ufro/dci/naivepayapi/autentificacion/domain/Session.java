@@ -56,4 +56,20 @@ public class Session {
     @Enumerated(EnumType.STRING)
     @Column(name = "ses_status", nullable = false, length = 16)
     private SessionStatus status;
+
+    /**
+     * Convierte esta sesión a historial
+     */
+    public SessionHistory toHistory(String closeReason) {
+        return SessionHistory.builder()
+                .jti(this.sesJti.toString())
+                .userId(this.user.getId())
+                .deviceFingerprint(this.sesDeviceFingerprint)
+                .created(this.sesCreated)
+                .expires(this.sesExpires)
+                .closed(Instant.now())
+                .status("CLOSED")
+                .closeReason(closeReason)
+                .build();
+    }
 }

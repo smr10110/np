@@ -154,7 +154,7 @@ public class AuthService {
                 UUID jti = UUID.fromString(jwtService.getJti(token));
                 MDC.put("jti", jti.toString());
 
-                authSessionService.closeByJti(jti);
+                authSessionService.closeByJti(jti, "logout");
 
                 logger.info("Logout exitoso | jti={}", jti);
                 return ResponseEntity.ok(Map.of("message", "Sesión cerrada", "jti", jti));

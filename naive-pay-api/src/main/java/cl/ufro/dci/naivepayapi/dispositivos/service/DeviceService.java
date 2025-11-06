@@ -4,7 +4,7 @@ import cl.ufro.dci.naivepayapi.dispositivos.domain.Device;
 import cl.ufro.dci.naivepayapi.dispositivos.domain.DeviceLog;
 import cl.ufro.dci.naivepayapi.dispositivos.repository.DeviceLogRepository;
 import cl.ufro.dci.naivepayapi.dispositivos.repository.DeviceRepository;
-import cl.ufro.dci.naivepayapi.autentificacion.repository.SessionRepository;
+import cl.ufro.dci.naivepayapi.autentificacion.service.AuthSessionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,7 +25,7 @@ public class DeviceService {
     private final DeviceRepository repo;
     private final DeviceLogRepository logRepo;
     private final UserRepository userRepo;
-    private final SessionRepository sessionRepository;
+    private final AuthSessionService authSessionService;
 
     // add service from register to hash de fingerprint
     private final PasswordEncoder passwordEncoder;
@@ -88,26 +88,20 @@ public class DeviceService {
             // 1) Detach logs that point to the existing device
             logRepo.detachDeviceFromLogs(existing);
 
-            // 2) CERRAR todas las sesiones activas del dispositivo antiguo (FIX DE SEGURIDAD)
+            // 2) MOVER sesiones a historial (arquitectura de 2 tablas)
             try {
-                int closedSessions = sessionRepository.closeSessionsByDeviceFingerprint(existing.getFingerprint());
-                System.out.println("🔒 Sesiones cerradas al reemplazar dispositivo: " + closedSessions);
+                authSessionService.closeSessionsByDeviceFingerprint(existing.getFingerprint(), "device_replaced");
             } catch (Exception e) {
-                System.err.println("⚠️ Error al cerrar sesiones del dispositivo antiguo: " + e.getMessage());
+                System.err.println("⚠️ Error al mover sesiones a historial: " + e.getMessage());
             }
 
-            // 3) Liberar referencias de SESSION (FK -> NULL) y borrar fila antigua
-            try {
-                sessionRepository.detachDeviceByFingerprint(existing.getFingerprint());
-            } catch (Exception ignored) {
-            }
-
+            // 3) Eliminar dispositivo antiguo (sin problemas de FK)
             repo.delete(existing);
             repo.flush();
 
             String hashedFp = passwordEncoder.encode(trimmedFp);
 
-            // 3) Insert new row with the new fingerprint
+            // 4) Insert new row with the new fingerprint
             Device device = new Device();
             device.setFingerprint(hashedFp);
             device.setUser(user);
@@ -162,7 +156,7 @@ public class DeviceService {
     @Transactional
     public void unlinkUserDevice(Long userId, String ip, String ua) {
         repo.findByUser_Id(userId).ifPresent(device -> {
-            // (log moderno ya lo hicimos)
+            // Log
             DeviceLog log = new DeviceLog();
             log.setUser(userRepo.getReferenceById(userId));
             log.setDevice(device);
@@ -178,10 +172,12 @@ public class DeviceService {
 
             logRepo.detachDeviceFromLogs(device);
 
+            // Mover sesiones a historial
             try {
-                sessionRepository.detachDeviceByFingerprint(device.getFingerprint());
+                authSessionService.closeSessionsByDeviceFingerprint(device.getFingerprint(), "device_unlinked");
             } catch (Exception ignored) {}
 
+            // Eliminar dispositivo
             repo.delete(device);
             repo.flush();
         });

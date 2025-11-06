@@ -99,7 +99,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (session.getDevice() == null) {
                 // Sesión huérfana: dispositivo fue eliminado pero sesión quedó activa
                 // Cerrar sesión automáticamente
-                authSessionService.closeByJti(jti);
+                authSessionService.closeByJti(jti, "device_removed");
                 write401(response, "DEVICE_REMOVED", "Dispositivo no autorizado");
                 return;
             }
@@ -111,7 +111,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (requestFp != null && tokenFp != null && !requestFp.equals(tokenFp)) {
                 // El fingerprint del request no coincide con el del token
                 // Esto indica uso del token desde un dispositivo diferente
-                authSessionService.closeByJti(jti);
+                authSessionService.closeByJti(jti, "fingerprint_mismatch");
                 write401(response, "FINGERPRINT_MISMATCH", "Dispositivo no autorizado");
                 return;
             }
@@ -133,7 +133,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             SecurityContextHolder.clearContext();
             try {
                 UUID jti = UUID.fromString(ex.getClaims().getId());
-                authSessionService.closeByJti(jti);
+                authSessionService.closeByJti(jti, "token_expired");
             } catch (Exception ignored) {
             }
             write401(response, "TOKEN_EXPIRED", "El token ha expirado");
