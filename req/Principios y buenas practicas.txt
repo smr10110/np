@@ -1,0 +1,9 @@
+Principios y buenas prácticas aplicadas
+SOLID: separación de responsabilidades, inversión de dependencias y diseño orientado a interfaces para facilitar testing y evolución.
+Clean Code: nombres claros, funciones pequeñas, responsabilidades únicas y código fácilmente legible.
+DRY / KISS / YAGNI: evitar duplicación, mantener soluciones simples y no sobrecomplicar con features innecesarias.
+Inyección de dependencias: facilita el mocking en pruebas y desacopla componentes.
+Manejo de errores centralizado: excepciones controladas y respuestas consistentes para el frontend.
+Seguridad: uso de Spring Security + JWT para autenticación/autorization, validación y saneamiento de inputs.
+Pruebas: diseño pensando en testabilidad (unitarias y de integración).
+Observabilidad: logs estructurados y métricas para detectar cuellos de botella en producción. 

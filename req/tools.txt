@@ -1,0 +1,4 @@
+Spring Boot
+Spring Security
+Angular 20
+Jwt
