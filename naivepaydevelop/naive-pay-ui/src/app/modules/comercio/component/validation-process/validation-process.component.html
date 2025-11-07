@@ -1,0 +1,122 @@
+<h2 id="validationTitle" >Solicitudes de Validación</h2>
+
+<div class="validationProcess">
+    <table class="validationTable">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Commerce</th>
+            <th>Tax Identifier</th>
+            <th>Categories</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody>
+            @for (commerce of pendingCommerces ; track commerce.comValId ){
+                <tr>
+                    <td>{{ commerce.comValId }}</td>
+                    <td>{{ commerce.comInfo.comName }}</td>
+                    <td>{{ commerce.comInfo.comTaxId }}</td>
+                    <td>
+                        <app-button [size]="'sm'" [variant]="'primary'">
+                            Categories
+                        </app-button>
+                    </td>
+                    <td>
+                        <app-button [size]="'sm'" [variant]="'outline'" (btnClick)="approveCommerce(commerce.comValId)">Approve</app-button>
+                        <app-button [size]="'sm'" [variant]="'outline'" (btnClick)="rejectCommerce(commerce.comValId)">Reject</app-button>
+                    </td>
+
+                </tr>
+            } @empty {
+                <tr>
+                    <td colspan="5" style="text-align: center;">No hay solicitudes pendientes.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<hr style="margin: 40px auto; max-width: 1000px; border-color: #d1d5db;">
+<h2 id="rejectedTitle">Comercios Aprobados</h2>
+
+<div class="validationProcess">
+    <table class="validationTable rejected-table">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Commerce</th>
+            <th>Tax Identifier</th>
+            <th>Status</th> </tr>
+        </thead>
+        <tbody>
+            @for (commerce of validCommerces ; track commerce.comId ){
+                <tr>
+                    <td>{{ commerce.comId }}</td>
+                    <td>{{ commerce.comInfo.comName }}</td>
+                    <td>{{ commerce.comInfo.comTaxId }}</td>
+                    <td><h6 class="statusApproved"> Approved</h6></td> </tr>
+            } @empty {
+                <tr>
+                    <td colspan="4" style="text-align: center;">No hay comercios aprobados.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<hr style="margin: 40px auto; max-width: 1000px; border-color: #d1d5db;">
+<h2 id="rejectedTitle">Comercios Rechazados</h2>
+
+<div class="validationProcess">
+    <table class="validationTable rejected-table">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Commerce</th>
+            <th>Tax Identifier</th>
+            <th>Status</th> </tr>
+        </thead>
+        <tbody>
+            @for (commerce of rejectedCommerces ; track commerce.comValId ){
+                <tr>
+                    <td>{{ commerce.comValId }}</td>
+                    <td>{{ commerce.comInfo.comName }}</td>
+                    <td>{{ commerce.comInfo.comTaxId }}</td>
+                    <td><h6 class="statusRejected"> Rejected</h6></td> </tr>
+            } @empty {
+                <tr>
+                    <td colspan="4" style="text-align: center;">No hay comercios rechazados.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<hr style="margin: 40px auto; max-width: 1000px; border-color: #d1d5db;">
+<h2 id="rejectedTitle">Comercios Expirados</h2>
+
+<div class="validationProcess">
+    <table class="validationTable rejected-table">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Commerce</th>
+            <th>Tax Identifier</th>
+            <th>Status</th> </tr>
+        </thead>
+        <tbody>
+            @for (commerce of expiredCommerces ; track commerce.comValId ){
+                <tr>
+                    <td>{{ commerce.comValId }}</td>
+                    <td>{{ commerce.comInfo.comName }}</td>
+                    <td>{{ commerce.comInfo.comTaxId }}</td>
+                    <td><h6 class="statusExpired"> Expired</h6></td> </tr>
+            } @empty {
+                <tr>
+                    <td colspan="4" style="text-align: center;">No hay comercios expirados.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
