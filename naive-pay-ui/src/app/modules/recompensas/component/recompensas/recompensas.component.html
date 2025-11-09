@@ -1,0 +1,70 @@
+<div class="rewards-container" *ngIf="account">
+    <h2 class="title">Recompensas por puntos</h2>
+
+    <div class="summary-card">
+        <div class="summary-item">
+            <h3>Saldo actual</h3>
+            <p class="points">{{ account.points | number }} pts</p>
+        </div>
+        <div class="summary-item">
+            <h3>Próximos a vencer</h3>
+            <p class="expiring" *ngIf="expiringPoints > 0">{{ expiringPoints }} pts</p>
+            <p *ngIf="expiringPoints === 0">—</p>
+        </div>
+    </div>
+
+    <div class="alert" *ngIf="expiringPoints > 0">
+        Tienes puntos que vencerán en los próximos {{ daysToExpire }} días.
+        ¡Aprovéchalos antes de que desaparezcan!
+    </div>
+
+    <div class="actions">
+        <button class="btn-primary" type="button" (click)="goToCanje()">Canjear puntos</button>
+        <button class="btn-secondary" type="button" (click)="goToPromos()">Ver promociones</button>
+    </div>
+
+    <!-- 🔹 Nueva sección de promociones -->
+    <div class="promotions" *ngIf="showPromotions">
+        <h3>Promociones disponibles</h3>
+        <ul>
+            <li *ngFor="let promo of promotions">{{ promo }}</li>
+        </ul>
+    </div>
+
+    <div class="history-section">
+        <h3>Historial de movimientos</h3>
+
+        <table class="table" *ngIf="history.length > 0; else emptyHistory">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Tipo</th>
+                <th>Puntos</th>
+                <th>Estado</th>
+                <th>Descripción</th>
+                <th>Fecha</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr *ngFor="let tx of history">
+                <td>{{ tx.id }}</td>
+                <td>{{ tx.type }}</td>
+                <td [class.positive]="tx.type === 'ACCUMULATE'" [class.negative]="tx.type === 'REDEEM'">
+                    {{ tx.points }}
+                </td>
+                <td>{{ tx.status }}</td>
+                <td>{{ tx.description }}</td>
+                <td>{{ tx.createdAt | date:'short' }}</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <ng-template #emptyHistory>
+            <p class="no-history">Aún no tienes movimientos registrados.</p>
+        </ng-template>
+    </div>
+</div>
+
+<div *ngIf="!account" class="loading">
+    <p>Cargando información de recompensas...</p>
+</div>
