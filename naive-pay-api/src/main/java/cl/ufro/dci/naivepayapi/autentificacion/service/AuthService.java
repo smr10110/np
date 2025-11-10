@@ -203,8 +203,8 @@ public class AuthService {
 
         logger.debug("Dispositivo autorizado | userId={} | fingerprint={}", user.getUseId(), device.getFingerprint());
 
-        // 1. Crear AuthAttempt exitoso (sin session aún)
-        var initialAuthAttempt = authAttemptService.log(device, null, true, AuthAttemptReason.OK);
+        // 1. Crear AuthAttempt exitoso
+        var initialAuthAttempt = authAttemptService.log(device, true, AuthAttemptReason.OK);
 
         logger.debug("AuthAttempt inicial creado | attemptId={}", initialAuthAttempt.getAttId());
 
@@ -277,7 +277,7 @@ public class AuthService {
      */
     private void logFailedAttempt(User user, AuthAttemptReason reason) {
         deviceService.findByUserId(user.getUseId())
-                .ifPresent(dev -> authAttemptService.log(dev, null, false, reason));
+                .ifPresent(dev -> authAttemptService.log(dev, false, reason));
     }
 
     // ----------------- Helpers - Validation -----------------

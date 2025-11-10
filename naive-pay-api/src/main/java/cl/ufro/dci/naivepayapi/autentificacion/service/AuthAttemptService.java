@@ -21,15 +21,13 @@ public class AuthAttemptService {
     /**
      * Registra un intento de autenticación
      * @param device Device que realizó el intento
-     * @param session Sesión asociada (puede ser null si el intento falló)
      * @param success Si el intento fue exitoso
      * @param reason Razón del intento
      * @return El AuthAttempt creado
      */
-    public AuthAttempt log(Device device, Session session, boolean success, AuthAttemptReason reason) {
+    public AuthAttempt log(Device device, boolean success, AuthAttemptReason reason) {
         var attempt = AuthAttempt.builder()
                 .device(device)
-                .session(session)
                 .attSuccess(success)
                 .attReason(reason)
                 .attOccurred(Instant.now())

@@ -42,14 +42,7 @@ public class AuthSessionService {
                 .status(SessionStatus.ACTIVE)
                 .build();
 
-        Session savedSession = authRepo.save(auth);
-
-        // Completar la referencia bidireccional: AuthAttempt también debe apuntar a Session
-        if (initialAuthAttempt != null) {
-            initialAuthAttempt.setSession(savedSession);
-        }
-
-        return savedSession;
+        return authRepo.save(auth);
     }
 
     @Transactional(readOnly = true)

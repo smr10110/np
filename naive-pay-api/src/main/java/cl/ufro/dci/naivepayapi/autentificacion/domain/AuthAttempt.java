@@ -8,8 +8,8 @@ import cl.ufro.dci.naivepayapi.dispositivos.domain.Device;
 
 /**
  * AuthAttempt entity representing an authentication attempt
- * Follows the chain: Session -> AuthAttempt -> Device -> User
- * AuthAttempt has a relationship to Device, NOT directly to User
+ * Follows the chain: AuthAttempt -> Device -> User
+ * AuthAttempt has a relationship to Device, NOT directly to User or Session
  */
 @Getter
 @Setter
@@ -30,11 +30,6 @@ public class AuthAttempt {
     @ManyToOne(fetch = FetchType.EAGER, optional = true)
     @JoinColumn(name = "dev_fingerprint", referencedColumnName = "dev_fingerprint")
     private Device device;
-
-    // Sesión a la que pertenece este intento (puede ser null si el intento falló antes de crear sesión)
-    @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "ses_id")
-    private Session session;
 
     @Column(name = "att_success", nullable = false)
     private boolean attSuccess;
