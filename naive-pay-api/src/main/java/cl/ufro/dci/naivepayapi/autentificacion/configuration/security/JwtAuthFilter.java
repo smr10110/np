@@ -17,7 +17,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.http.HttpMethod;
-import org.springframework.web.server.ResponseStatusException;
 
 
 import java.io.IOException;
@@ -92,23 +91,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // Actualizar última actividad de la sesión
-            try {
-                authSessionService.updateLastActivity(jti);
-            } catch (ResponseStatusException e) {
-                String errorMessage = e.getReason() != null ? e.getReason() : "";
-                if ("SESSION_EXPIRED".equals(errorMessage)) {
-                    write401(response, "SESSION_EXPIRED", "Sesión expirada por límite de tiempo");
-                } else if ("SESSION_INACTIVE".equals(errorMessage)) {
-                    write401(response, "SESSION_INACTIVE", "Sesión cerrada por inactividad");
-                } else {
-                    write401(response, "SESSION_ERROR", "Error en la sesión");
-                }
-                return;
-            } catch (IllegalArgumentException e) {
-                write401(response, "SESSION_NOT_FOUND", "Sesión no encontrada");
-                return;
-            }
 
             var auth = new UsernamePasswordAuthenticationToken(
                     claims.getSubject(),

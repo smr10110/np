@@ -12,14 +12,12 @@ import { Component, Input } from '@angular/core';
 export class CountdownTimerComponent {
 
   @Input() targetDate!: Date;
-  @Input() compact: boolean = false;
 
   timeLeft = {
     days: 0,
     hours: 0,
     minutes: 0,
     seconds: 0,
-    totalMinutes: 0,
   };
 
   private intervalId: any;
@@ -33,37 +31,22 @@ export class CountdownTimerComponent {
   }
 
   startCountdown(): void {
-    this.updateTime();
     this.intervalId = setInterval(() => {
-      this.updateTime();
+      const now = new Date();
+      const difference = this.targetDate.getTime() - now.getTime();
+
+      if (difference > 0) {
+        this.timeLeft.days = Math.floor(difference / (1000 * 60 * 60 * 24));
+        this.timeLeft.hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+        this.timeLeft.minutes = Math.floor((difference / (1000 * 60)) % 60);
+        this.timeLeft.seconds = Math.floor((difference / 1000) % 60);
+      } else {
+        clearInterval(this.intervalId);
+      }
     }, 1000);
-  }
-
-  private updateTime(): void {
-    const now = new Date();
-    const difference = this.targetDate.getTime() - now.getTime();
-
-    if (difference > 0) {
-      this.timeLeft.days = Math.floor(difference / (1000 * 60 * 60 * 24));
-      this.timeLeft.hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-      this.timeLeft.minutes = Math.floor((difference / (1000 * 60)) % 60);
-      this.timeLeft.seconds = Math.floor((difference / 1000) % 60);
-      this.timeLeft.totalMinutes = Math.floor(difference / (1000 * 60));
-    } else {
-      this.timeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0, totalMinutes: 0 };
-      clearInterval(this.intervalId);
-    }
   }
 
   formatTime(value: number): string {
     return value.toString().padStart(2, '0');
-  }
-
-  isWarning(): boolean {
-    return this.timeLeft.totalMinutes <= 2 && this.timeLeft.totalMinutes > 0;
-  }
-
-  isCritical(): boolean {
-    return this.timeLeft.totalMinutes <= 1;
   }
 }
