@@ -1,6 +1,6 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, of, tap } from 'rxjs';
+import { Observable, of, tap, BehaviorSubject } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { DeviceFingerprintService } from '../../dispositivos/service/device-fingerprint.service';
@@ -47,6 +47,10 @@ export class AutentificacionService implements OnDestroy {
   private inactivityCheckTimer: ReturnType<typeof setInterval> | null = null;
   private warningShown = false;
 
+  // Observable para exponer fecha de expiración de sesión
+  private sessionExpirationSubject = new BehaviorSubject<Date | null>(null);
+  public sessionExpiration$ = this.sessionExpirationSubject.asObservable();
+
   constructor() {
     // Restaura sesión existente si hay token en sessionStorage
     const token = sessionStorage.getItem('token');
@@ -78,6 +82,9 @@ export class AutentificacionService implements OnDestroy {
       this.clearAndRedirect('session_closed');
       return;
     }
+
+    // Actualizar observable de expiración
+    this.sessionExpirationSubject.next(at);
 
     // Programa logout automático cuando expire el token
     this.logoutTimer = setTimeout(() => {
@@ -159,6 +166,7 @@ export class AutentificacionService implements OnDestroy {
     sessionStorage.removeItem('token');
     this.cleanupTimers();
     this.stopInactivityMonitoring();
+    this.sessionExpirationSubject.next(null);
   }
 
   // Limpia sesión y redirige a login con razón especificada

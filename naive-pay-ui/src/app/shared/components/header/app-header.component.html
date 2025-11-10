@@ -64,6 +64,15 @@
     <div [ngClass]="isApplicationMenuOpen ? 'flex' : 'hidden'"
       class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none">
       <div class="flex items-center gap-2 2xsm:gap-3">
+        <!-- Session Timer -->
+        @if (sessionExpiration$ | async; as expiration) {
+          <div class="flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800">
+            <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <app-countdown-timer [targetDate]="expiration" [compact]="true" />
+          </div>
+        }
         <!-- ThemeToggleButton placeholder -->
         <app-theme-toggle-button />
         <!-- NotificationDropdown placeholder -->
