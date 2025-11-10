@@ -1,1 +1,9 @@
 <router-outlet></router-outlet>
+
+<!-- Inactivity Warning Modal -->
+@if (showInactivityWarning$ | async) {
+  <app-inactivity-warning-modal
+    (continue)="onContinueSession()"
+    (logout)="onLogout()">
+  </app-inactivity-warning-modal>
+}

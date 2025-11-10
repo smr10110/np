@@ -1,0 +1,55 @@
+<!-- Overlay -->
+<div class="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+  <!-- Modal -->
+  <div class="relative w-full max-w-md p-6 mx-4 bg-white rounded-lg shadow-xl dark:bg-gray-900">
+    <!-- Icon -->
+    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-orange-100 dark:bg-orange-900/30">
+      <svg class="w-8 h-8 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+    </div>
+
+    <!-- Title -->
+    <h3 class="mb-2 text-xl font-semibold text-center text-gray-900 dark:text-white">
+      ¿Sigues conectado?
+    </h3>
+
+    <!-- Message -->
+    <p class="mb-6 text-sm text-center text-gray-600 dark:text-gray-400">
+      Tu sesión expirará por inactividad
+    </p>
+
+    <!-- Countdown Timer -->
+    <div class="mb-6 text-center">
+      <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+        Se cerrará la sesión en
+      </div>
+      <div class="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800">
+        <svg class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span class="font-mono text-2xl font-bold"
+          [ngClass]="{
+            'text-red-600 dark:text-red-400': timeLeft.totalSeconds <= 10,
+            'text-orange-600 dark:text-orange-400': timeLeft.totalSeconds > 10
+          }">
+          {{ formatTime(timeLeft.minutes) }}:{{ formatTime(timeLeft.seconds) }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="flex gap-3">
+      <button
+        (click)="onLogout()"
+        class="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700">
+        Salir
+      </button>
+      <button
+        (click)="onContinue()"
+        class="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 dark:bg-brand-500 dark:hover:bg-brand-600">
+        Seguir conectado
+      </button>
+    </div>
+  </div>
+</div>
