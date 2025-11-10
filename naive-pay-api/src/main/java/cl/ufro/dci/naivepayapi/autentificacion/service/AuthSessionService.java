@@ -1,10 +1,9 @@
 package cl.ufro.dci.naivepayapi.autentificacion.service;
 
+import cl.ufro.dci.naivepayapi.autentificacion.domain.AuthAttempt;
 import cl.ufro.dci.naivepayapi.autentificacion.domain.Session;
 import cl.ufro.dci.naivepayapi.autentificacion.domain.enums.SessionStatus;
 import cl.ufro.dci.naivepayapi.autentificacion.repository.SessionRepository;
-import cl.ufro.dci.naivepayapi.dispositivos.domain.Device;
-import cl.ufro.dci.naivepayapi.registro.domain.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +14,7 @@ import java.util.UUID;
 /**
  * Servicio encargado de persistir y administrar las sesiones de autenticación
  * asociadas a tokens JWT emitidos por el sistema.
+ * Follows the chain: Session -> AuthAttempt -> Device -> User
  */
 @Service
 public class AuthSessionService {
@@ -25,13 +25,18 @@ public class AuthSessionService {
         this.authRepo = authRepo;
     }
 
+    /**
+     * Crea una nueva sesión activa basada en un intento de autenticación exitoso
+     * @param jti JWT ID único para esta sesión
+     * @param initialAuthAttempt El intento de autenticación que inició esta sesión
+     * @param expiresAt Fecha de expiración de la sesión
+     * @return La sesión creada
+     */
     @Transactional
-    public Session saveActiveSession(UUID jti, User user, Device device, Instant expiresAt) {
+    public Session saveActiveSession(UUID jti, AuthAttempt initialAuthAttempt, Instant expiresAt) {
         Session auth = Session.builder()
                 .sesJti(jti)
-                .user(user)
-                .device(device)
-                .sesDeviceFingerprint(device != null ? device.getFingerprint() : null)
+                .initialAuthAttempt(initialAuthAttempt)
                 .sesCreated(Instant.now())
                 .sesExpires(expiresAt)
                 .status(SessionStatus.ACTIVE)
