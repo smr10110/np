@@ -40,7 +40,6 @@ public class PasswordRecoveryService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-    private final AuthAttemptService authAttemptService;
 
     @Transactional
     public void sendRecoveryCode(String email) {
@@ -81,9 +80,6 @@ public class PasswordRecoveryService {
         if (user.getUseState() == AccountState.INACTIVE) {
             user.setUseState(AccountState.ACTIVE);
         }
-
-        // Registrar reseteo como intento exitoso (resetea contador de intentos fallidos)
-        authAttemptService.logPasswordResetAsSuccess(user);
 
         // Email de confirmación
         sendPasswordChangeEmail(email, user.getUseNames());

@@ -2,8 +2,10 @@ package cl.ufro.dci.naivepayapi.dispositivos.service;
 
 import cl.ufro.dci.naivepayapi.autentificacion.dto.LoginResponse;
 import cl.ufro.dci.naivepayapi.autentificacion.service.AuthSessionService;
+import cl.ufro.dci.naivepayapi.autentificacion.service.AuthAttemptService;
 import cl.ufro.dci.naivepayapi.autentificacion.service.RutUtils;
 import cl.ufro.dci.naivepayapi.autentificacion.service.impl.JWTServiceImpl;
+import cl.ufro.dci.naivepayapi.autentificacion.domain.enums.AuthAttemptReason;
 import cl.ufro.dci.naivepayapi.dispositivos.domain.Device;
 import cl.ufro.dci.naivepayapi.dispositivos.domain.DeviceRecovery;
 import cl.ufro.dci.naivepayapi.dispositivos.repository.DeviceRecoveryRepository;
@@ -43,6 +45,7 @@ public class DeviceRecoveryService {
     private final DeviceService deviceService;
     private final JWTServiceImpl jwtService;
     private final AuthSessionService authSessionService;
+    private final AuthAttemptService authAttemptService;
     private final UserRepository userRepo;
 
     private enum RecoveryStatus {
@@ -226,6 +229,7 @@ public class DeviceRecoveryService {
 
     /**
      * Generates a JWT token for the verified user and device, and stores an active session.
+     * Follows the chain: Session -> AuthAttempt -> Device -> User
      *
      * @param user        the verified user
      * @param savedDevice the verified device
@@ -239,9 +243,14 @@ public class DeviceRecoveryService {
         UUID jti = UUID.randomUUID();
         String token = jwtService.generate(String.valueOf(user.getUseId()), fingerprint, jti.toString());
         Instant exp = jwtService.getExpiration(token);
-        authSessionService.saveActiveSession(jti, user, savedDevice, exp);
 
-        return new LoginResponse(token, exp.toString(), jti.toString());
+        // 1. Crear AuthAttempt exitoso para device recovery
+        var initialAuthAttempt = authAttemptService.log(savedDevice, null, true, AuthAttemptReason.OK);
+
+        // 2. Crear Session con el AuthAttempt
+        var session = authSessionService.saveActiveSession(jti, initialAuthAttempt, exp);
+
+        return new LoginResponse(token, exp.toString(), session.getSesId().toString());
     }
 
     /**

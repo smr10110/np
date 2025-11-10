@@ -2,14 +2,17 @@ package cl.ufro.dci.naivepayapi.autentificacion.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
-import cl.ufro.dci.naivepayapi.registro.domain.User;
-import cl.ufro.dci.naivepayapi.dispositivos.domain.Device;
 import cl.ufro.dci.naivepayapi.autentificacion.domain.enums.SessionStatus;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Session entity representing a user session
+ * Follows the chain: Session -> AuthAttempt -> Device -> User
+ * Session does NOT have direct relationships to User or Device
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -27,19 +30,12 @@ public class Session {
     @Column(name = "ses_jti", nullable = false, unique = true)
     private java.util.UUID sesJti;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "use_id", nullable = false, referencedColumnName = "useId")
-    private User user;
+    // Relación al AuthAttempt que inició esta sesión
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "att_id_initial", nullable = false, referencedColumnName = "att_id")
+    private AuthAttempt initialAuthAttempt;
 
-    // Permitimos NULL para conservar sesiones históricas si el Device se elimina
-    @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "dev_fingerprint", referencedColumnName = "dev_fingerprint")
-    private Device device;
-
-    // Snapshot del fingerprint al momento de crear la sesión
-    @Column(name = "ses_dev_fp", length = 255)
-    private String sesDeviceFingerprint;
-
+    // Todos los intentos de autenticación relacionados con esta sesión
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude @EqualsAndHashCode.Exclude
     private List<AuthAttempt> attempts = new ArrayList<>();
@@ -56,4 +52,16 @@ public class Session {
     @Enumerated(EnumType.STRING)
     @Column(name = "ses_status", nullable = false, length = 16)
     private SessionStatus status;
+
+    // Métodos helper para navegar la cadena Session -> AuthAttempt -> Device -> User
+    public cl.ufro.dci.naivepayapi.dispositivos.domain.Device getDevice() {
+        return initialAuthAttempt != null ? initialAuthAttempt.getDevice() : null;
+    }
+
+    public cl.ufro.dci.naivepayapi.registro.domain.User getUser() {
+        if (initialAuthAttempt != null && initialAuthAttempt.getDevice() != null) {
+            return initialAuthAttempt.getDevice().getUser();
+        }
+        return null;
+    }
 }
