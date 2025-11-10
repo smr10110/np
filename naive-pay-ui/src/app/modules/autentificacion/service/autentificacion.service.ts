@@ -158,6 +158,7 @@ export class AutentificacionService implements OnDestroy {
   clear(): void {
     sessionStorage.removeItem('token');
     this.cleanupTimers();
+    this.stopInactivityMonitoring();
   }
 
   // Limpia sesión y redirige a login con razón especificada
