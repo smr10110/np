@@ -53,6 +53,9 @@ public class Session {
     @Column(name = "ses_closed")
     private Instant sesClosed;
 
+    @Column(name = "ses_last_activity", nullable = false)
+    private Instant sesLastActivity;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "ses_status", nullable = false, length = 16)
     private SessionStatus status;
