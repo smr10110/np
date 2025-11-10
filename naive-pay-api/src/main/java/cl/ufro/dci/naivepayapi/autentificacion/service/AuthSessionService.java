@@ -5,10 +5,14 @@ import cl.ufro.dci.naivepayapi.autentificacion.domain.enums.SessionStatus;
 import cl.ufro.dci.naivepayapi.autentificacion.repository.SessionRepository;
 import cl.ufro.dci.naivepayapi.dispositivos.domain.Device;
 import cl.ufro.dci.naivepayapi.registro.domain.User;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,19 +25,24 @@ public class AuthSessionService {
 
     private final SessionRepository authRepo;
 
+    @Value("${security.session.inactivity-timeout-minutes:10}")
+    private long inactivityTimeoutMinutes;
+
     public AuthSessionService(SessionRepository authRepo) {
         this.authRepo = authRepo;
     }
 
     @Transactional
     public Session saveActiveSession(UUID jti, User user, Device device, Instant expiresAt) {
+        Instant now = Instant.now();
         Session auth = Session.builder()
                 .sesJti(jti)
                 .user(user)
                 .device(device)
                 .sesDeviceFingerprint(device != null ? device.getFingerprint() : null)
-                .sesCreated(Instant.now())
+                .sesCreated(now)
                 .sesExpires(expiresAt)
+                .sesLastActivity(now)
                 .status(SessionStatus.ACTIVE)
                 .build();
 
@@ -61,5 +70,32 @@ public class AuthSessionService {
             }
             return a;
         });
+    }
+
+    @Transactional
+    public void updateLastActivity(UUID jti) {
+        Session session = authRepo.findBySesJtiAndStatus(jti, SessionStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found"));
+
+        Instant now = Instant.now();
+        Instant lastUpdate = session.getSesLastActivity();
+
+        // Optimización: solo actualizar si pasó más de 1 minuto desde última actualización
+        if (ChronoUnit.MINUTES.between(lastUpdate, now) < 1) {
+            return;
+        }
+
+        // Validar que no haya superado tiempo de inactividad (10 min)
+        Instant inactivityLimit = lastUpdate.plus(inactivityTimeoutMinutes, ChronoUnit.MINUTES);
+        if (now.isAfter(inactivityLimit)) {
+            session.setStatus(SessionStatus.CLOSED);
+            session.setSesClosed(inactivityLimit);
+            authRepo.save(session);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "SESSION_INACTIVE");
+        }
+
+        // Actualizar última actividad
+        session.setSesLastActivity(now);
+        authRepo.save(session);
     }
 }

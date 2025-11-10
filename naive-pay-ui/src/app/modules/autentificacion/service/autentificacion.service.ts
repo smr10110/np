@@ -44,16 +44,22 @@ export class AutentificacionService implements OnDestroy {
   private readonly base = 'http://localhost:8080/auth';
 
   private logoutTimer: ReturnType<typeof setTimeout> | null = null;
+  private inactivityCheckTimer: ReturnType<typeof setInterval> | null = null;
+  private warningShown = false;
 
   constructor() {
     // Restaura sesión existente si hay token en sessionStorage
     const token = sessionStorage.getItem('token');
-    if (token) this.scheduleAutoLogoutFromToken(token);
+    if (token) {
+      this.scheduleAutoLogoutFromToken(token);
+      this.startInactivityMonitoring();
+    }
   }
 
   // Limpia timers al destruir el servicio para prevenir memory leaks
   ngOnDestroy(): void {
     this.cleanupTimers();
+    this.stopInactivityMonitoring();
   }
 
   // ======================== Session Helpers ========================
@@ -96,10 +102,63 @@ export class AutentificacionService implements OnDestroy {
     }
   }
 
+  // Inicia monitoreo de inactividad mediante polling cada 1 minuto
+  private startInactivityMonitoring(): void {
+    this.stopInactivityMonitoring();
+
+    this.inactivityCheckTimer = setInterval(() => {
+      this.http.get<{ minutesUntilInactivity: number }>(`${this.base}/session-status`)
+        .subscribe({
+          next: (res) => {
+            // Si queda 1 minuto o menos y no hemos mostrado advertencia
+            if (res.minutesUntilInactivity <= 1 && !this.warningShown) {
+              this.warningShown = true;
+              this.showInactivityWarning();
+            }
+          },
+          error: (err) => {
+            if (err.status === 401) {
+              this.stopInactivityMonitoring();
+              this.clearAndRedirect('session_closed');
+            }
+          }
+        });
+    }, 60000);  // Cada 1 minuto
+  }
+
+  // Detiene monitoreo de inactividad
+  private stopInactivityMonitoring(): void {
+    if (this.inactivityCheckTimer) {
+      clearInterval(this.inactivityCheckTimer);
+      this.inactivityCheckTimer = null;
+    }
+    this.warningShown = false;
+  }
+
+  // Muestra advertencia de inactividad al usuario
+  private showInactivityWarning(): void {
+    const userWantsToContinue = confirm(
+      'Tu sesión expirará en 1 minuto por inactividad.\n\n' +
+      '¿Deseas continuar?\n\n' +
+      'Haz clic en "Aceptar" para continuar o "Cancelar" para cerrar sesión.'
+    );
+
+    if (userWantsToContinue) {
+      // Cualquier request HTTP resetea la actividad automáticamente
+      // Hacemos un request simple para resetear
+      this.http.get(`${this.base}/session-status`).subscribe();
+      this.warningShown = false;  // Resetear para mostrar próxima advertencia si es necesario
+    } else {
+      // Usuario quiere cerrar sesión
+      this.logout(true).subscribe();
+    }
+  }
+
   // Limpia la sesión local eliminando token y cancelando todos los timers
   clear(): void {
     sessionStorage.removeItem('token');
     this.cleanupTimers();
+    this.stopInactivityMonitoring();
   }
 
   // Limpia sesión y redirige a login con razón especificada
@@ -125,12 +184,14 @@ export class AutentificacionService implements OnDestroy {
       tap(res => {
         sessionStorage.setItem('token', res.accessToken);
         this.scheduleAutoLogoutFromToken(res.accessToken);
+        this.startInactivityMonitoring();
       })
     );
   }
 
   // Cierra sesión del usuario e invalida token en backend
   logout(redirect: boolean = true): Observable<void> {
+    this.stopInactivityMonitoring();
     return this.http.post<void>(`${this.base}/logout`, {}).pipe(
       tap(() => {
         this.clear();
