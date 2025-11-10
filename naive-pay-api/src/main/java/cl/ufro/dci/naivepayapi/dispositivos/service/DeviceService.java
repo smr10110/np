@@ -127,9 +127,10 @@ public class DeviceService {
                                  Instant now) {
 
         devLogRepo.detachDeviceFromLogs(oldDevice);
-        try {
-            sessionRepo.detachDeviceByFingerprint(oldDevice.getFingerprint());
-        } catch (Exception ignored) {}
+
+        // Con el nuevo modelo Session -> AuthAttempt -> Device -> User,
+        // JPA establece automáticamente device = null en AuthAttempt cuando se elimina el Device
+        // ya que AuthAttempt.device es opcional (optional = true)
 
         devRepo.delete(oldDevice);
         devRepo.flush();
@@ -236,9 +237,9 @@ public class DeviceService {
 
             devLogRepo.detachDeviceFromLogs(device);
 
-            try {
-                sessionRepo.detachDeviceByFingerprint(device.getFingerprint());
-            } catch (Exception ignored) {}
+            // Con el nuevo modelo Session -> AuthAttempt -> Device -> User,
+            // JPA establece automáticamente device = null en AuthAttempt cuando se elimina el Device
+            // ya que AuthAttempt.device es opcional (optional = true)
 
             devRepo.delete(device);
             devRepo.flush();

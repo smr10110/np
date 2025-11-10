@@ -4,8 +4,13 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
 import cl.ufro.dci.naivepayapi.autentificacion.domain.enums.AuthAttemptReason;
-import cl.ufro.dci.naivepayapi.registro.domain.User;
+import cl.ufro.dci.naivepayapi.dispositivos.domain.Device;
 
+/**
+ * AuthAttempt entity representing an authentication attempt
+ * Follows the chain: Session -> AuthAttempt -> Device -> User
+ * AuthAttempt has a relationship to Device, NOT directly to User
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,14 +25,13 @@ public class AuthAttempt {
     @Column(name = "att_id")
     private Long attId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "use_id", referencedColumnName = "useId")
-    private User user;
+    // Relación al Device que realizó el intento
+    // Optional = true para permitir conservar intentos históricos si el Device se elimina
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "dev_fingerprint", referencedColumnName = "dev_fingerprint")
+    private Device device;
 
-    // Snapshot del fingerprint del dispositivo al momento del intento
-    @Column(name = "att_dev_fp", length = 255)
-    private String attDeviceFingerprint;
-
+    // Sesión a la que pertenece este intento (puede ser null si el intento falló antes de crear sesión)
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "ses_id")
     private Session session;
@@ -41,4 +45,9 @@ public class AuthAttempt {
 
     @Column(name = "att_occurred", nullable = false)
     private Instant attOccurred;
+
+    // Método helper para obtener el User a través de Device
+    public cl.ufro.dci.naivepayapi.registro.domain.User getUser() {
+        return device != null ? device.getUser() : null;
+    }
 }

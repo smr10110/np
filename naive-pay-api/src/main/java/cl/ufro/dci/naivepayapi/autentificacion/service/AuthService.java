@@ -64,7 +64,7 @@ public class AuthService {
             Optional<User> userOpt = resolveUser(req.getIdentifier());
             if (userOpt.isEmpty()) {
                 logger.warn("Login rechazado: usuario no encontrado | identifier={}", req.getIdentifier());
-                logAttempt(null, deviceFingerprint, null, false, AuthAttemptReason.USER_NOT_FOUND);
+                // No podemos registrar el intento porque no hay user ni device
                 return unauthorized(AuthAttemptReason.USER_NOT_FOUND);
             }
             User user = userOpt.get();
@@ -174,6 +174,7 @@ public class AuthService {
 
     /**
      * Crea una sesión autenticada completa: genera token JWT, valida dispositivo y persiste sesión.
+     * Sigue la cadena: Session -> AuthAttempt -> Device -> User
      *
      * @param user Usuario autenticado
      * @param deviceFingerprint Fingerprint del dispositivo
@@ -202,13 +203,15 @@ public class AuthService {
 
         logger.debug("Dispositivo autorizado | userId={} | fingerprint={}", user.getUseId(), device.getFingerprint());
 
-        // Persistir sesión activa
-        Session session = authSessionService.saveActiveSession(jti, user, device, exp);
+        // 1. Crear AuthAttempt exitoso (sin session aún)
+        var initialAuthAttempt = authAttemptService.log(device, null, true, AuthAttemptReason.OK);
+
+        logger.debug("AuthAttempt inicial creado | attemptId={}", initialAuthAttempt.getAttId());
+
+        // 2. Crear Session con el AuthAttempt inicial
+        Session session = authSessionService.saveActiveSession(jti, initialAuthAttempt, exp);
 
         logger.debug("Sesión persistida | userId={} | sessionId={}", user.getUseId(), session.getSesId());
-
-        // Registrar intento exitoso
-        logAttempt(user, device.getFingerprint(), session, true, AuthAttemptReason.OK);
 
         // Construir respuesta
         return new LoginResponse(
@@ -268,15 +271,13 @@ public class AuthService {
 
     // ----------------- Helpers - Logging -----------------
 
-    /** Registra un intento de autenticación con toda la información disponible. */
-    private void logAttempt(User user, String attDeviceFingerprint, Session session, boolean success, AuthAttemptReason reason) {
-        authAttemptService.log(user, attDeviceFingerprint, session, success, reason);
-    }
-
-    /** Registra un intento fallido obteniendo automáticamente el dispositivo del usuario. */
+    /**
+     * Registra un intento fallido obteniendo automáticamente el dispositivo del usuario.
+     * Sigue la cadena: Session -> AuthAttempt -> Device -> User
+     */
     private void logFailedAttempt(User user, AuthAttemptReason reason) {
         deviceService.findByUserId(user.getUseId())
-                .ifPresent(dev -> authAttemptService.log(user, dev.getFingerprint(), null, false, reason));
+                .ifPresent(dev -> authAttemptService.log(dev, null, false, reason));
     }
 
     // ----------------- Helpers - Validation -----------------

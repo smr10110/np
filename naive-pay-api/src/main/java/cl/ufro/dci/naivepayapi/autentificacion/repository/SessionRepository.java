@@ -16,8 +16,8 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
 
     Optional<Session> findBySesJti(UUID sesJti);
 
-    // Libera la referencia a Device en sesiones por fingerprint (mitigación histórica)
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("update Session s set s.device = null where s.device.fingerprint = :fp")
-    int detachDeviceByFingerprint(@Param("fp") String fingerprint);
+    // NOTA: Con el nuevo modelo Session -> AuthAttempt -> Device -> User,
+    // Session ya no tiene relación directa con Device.
+    // Si se necesita desvincular dispositivos, debe hacerse a nivel de AuthAttempt.
+    // El método detachDeviceByFingerprint ha sido removido ya que no es compatible con el nuevo modelo.
 }
