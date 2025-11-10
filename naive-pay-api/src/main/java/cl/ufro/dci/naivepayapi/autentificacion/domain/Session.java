@@ -31,7 +31,7 @@ public class Session {
     private java.util.UUID sesJti;
 
     // Relación al AuthAttempt que inició esta sesión
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "att_id_initial", nullable = false, referencedColumnName = "att_id")
     private AuthAttempt initialAuthAttempt;
 

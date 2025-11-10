@@ -27,7 +27,7 @@ public class AuthAttempt {
 
     // Relación al Device que realizó el intento
     // Optional = true para permitir conservar intentos históricos si el Device se elimina
-    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @ManyToOne(fetch = FetchType.EAGER, optional = true)
     @JoinColumn(name = "dev_fingerprint", referencedColumnName = "dev_fingerprint")
     private Device device;
 
