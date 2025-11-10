@@ -28,6 +28,9 @@ public class AuthSessionService {
     @Value("${security.session.inactivity-timeout-minutes:10}")
     private long inactivityTimeoutMinutes;
 
+    @Value("${security.session.max-session-lifetime-minutes:30}")
+    private long maxSessionLifetimeMinutes;
+
     public AuthSessionService(SessionRepository authRepo) {
         this.authRepo = authRepo;
     }
@@ -35,6 +38,8 @@ public class AuthSessionService {
     @Transactional
     public Session saveActiveSession(UUID jti, User user, Device device, Instant expiresAt) {
         Instant now = Instant.now();
+        Instant maxExpiration = now.plus(maxSessionLifetimeMinutes, ChronoUnit.MINUTES);
+
         Session auth = Session.builder()
                 .sesJti(jti)
                 .user(user)
@@ -43,6 +48,7 @@ public class AuthSessionService {
                 .sesCreated(now)
                 .sesExpires(expiresAt)
                 .sesLastActivity(now)
+                .sesMaxExpiration(maxExpiration)
                 .status(SessionStatus.ACTIVE)
                 .build();
 
@@ -79,6 +85,14 @@ public class AuthSessionService {
 
         Instant now = Instant.now();
         Instant lastUpdate = session.getSesLastActivity();
+
+        // Validar límite absoluto de sesión (30 min desde login)
+        if (now.isAfter(session.getSesMaxExpiration())) {
+            session.setStatus(SessionStatus.CLOSED);
+            session.setSesClosed(session.getSesMaxExpiration());
+            authRepo.save(session);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "SESSION_EXPIRED");
+        }
 
         // Optimización: solo actualizar si pasó más de 1 minuto desde última actualización
         if (ChronoUnit.MINUTES.between(lastUpdate, now) < 1) {

@@ -5,6 +5,7 @@ import cl.ufro.dci.naivepayapi.autentificacion.domain.enums.SessionStatus;
 import cl.ufro.dci.naivepayapi.autentificacion.repository.SessionRepository;
 import cl.ufro.dci.naivepayapi.autentificacion.service.JWTService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +25,9 @@ public class SessionStatusController {
     private final JWTService jwtService;
     private final SessionRepository sessionRepository;
 
+    @Value("${security.session.inactivity-timeout-minutes:10}")
+    private long inactivityTimeoutMinutes;
+
     @GetMapping("/session-status")
     public ResponseEntity<SessionStatusResponse> getSessionStatus(
             @RequestHeader("Authorization") String authHeader
@@ -36,11 +40,27 @@ public class SessionStatusController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "SESSION_NOT_FOUND"));
 
         Instant now = Instant.now();
-        long minutesSinceActivity = ChronoUnit.MINUTES.between(session.getSesLastActivity(), now);
-        long minutesRemaining = 10 - minutesSinceActivity;
 
-        return ResponseEntity.ok(new SessionStatusResponse(Math.max(0, minutesRemaining)));
+        // Calcular minutos restantes hasta timeout de inactividad
+        long minutesSinceActivity = ChronoUnit.MINUTES.between(session.getSesLastActivity(), now);
+        long minutesUntilInactivity = inactivityTimeoutMinutes - minutesSinceActivity;
+
+        // Calcular minutos restantes hasta expiración absoluta
+        long minutesUntilMaxExpiration = ChronoUnit.MINUTES.between(now, session.getSesMaxExpiration());
+
+        // Devolver el límite más restrictivo (el que expire primero)
+        long minutesRemaining = Math.min(minutesUntilInactivity, minutesUntilMaxExpiration);
+
+        return ResponseEntity.ok(new SessionStatusResponse(
+                Math.max(0, minutesRemaining),
+                Math.max(0, minutesUntilInactivity),
+                Math.max(0, minutesUntilMaxExpiration)
+        ));
     }
 }
 
-record SessionStatusResponse(long minutesUntilInactivity) {}
+record SessionStatusResponse(
+        long minutesRemaining,
+        long minutesUntilInactivity,
+        long minutesUntilMaxExpiration
+) {}
