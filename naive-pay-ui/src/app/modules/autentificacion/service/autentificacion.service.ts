@@ -33,6 +33,12 @@ export interface MessageResponse {
   message: string;
 }
 
+export interface SessionStatusResponse {
+  minutesRemaining: number;
+  minutesUntilInactivity: number;
+  minutesUntilMaxExpiration: number;
+}
+
 /**
  * Servicio de autenticación que gestiona login, logout y recuperación de contraseña.
  * Implementa OnDestroy para cleanup de timers y prevenir memory leaks.
@@ -116,11 +122,11 @@ export class AutentificacionService implements OnDestroy {
     this.stopInactivityMonitoring();
 
     this.inactivityCheckTimer = setInterval(() => {
-      this.http.get<{ minutesUntilInactivity: number }>(`${this.base}/session-status`)
+      this.http.get<SessionStatusResponse>(`${this.base}/session-status`)
         .subscribe({
           next: (res) => {
-            // Si queda 1 minuto o menos y no hemos mostrado advertencia
-            if (res.minutesUntilInactivity <= 1 && !this.warningShown) {
+            // Si queda 1 minuto o menos (considerando el límite más restrictivo) y no hemos mostrado advertencia
+            if (res.minutesRemaining <= 1 && !this.warningShown) {
               this.warningShown = true;
               this.showInactivityWarning();
             }

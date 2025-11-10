@@ -96,7 +96,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             try {
                 authSessionService.updateLastActivity(jti);
             } catch (ResponseStatusException e) {
-                write401(response, "SESSION_INACTIVE", "Sesión cerrada por inactividad");
+                String errorMessage = e.getReason() != null ? e.getReason() : "";
+                if ("SESSION_EXPIRED".equals(errorMessage)) {
+                    write401(response, "SESSION_EXPIRED", "Sesión expirada por límite de tiempo");
+                } else if ("SESSION_INACTIVE".equals(errorMessage)) {
+                    write401(response, "SESSION_INACTIVE", "Sesión cerrada por inactividad");
+                } else {
+                    write401(response, "SESSION_ERROR", "Error en la sesión");
+                }
                 return;
             } catch (IllegalArgumentException e) {
                 write401(response, "SESSION_NOT_FOUND", "Sesión no encontrada");
