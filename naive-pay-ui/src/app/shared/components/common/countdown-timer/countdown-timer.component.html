@@ -1,28 +1,42 @@
-<div class="mb-10">
-  <div
-    class="flex flex-wrap justify-center gap-2 mb-2 font-bold text-title-md text-brand-500 dark:text-brand-400 xl:text-title-lg"
-  >
-    <div class="timer-box">
-      <span>{{ formatTime(timeLeft.days) }}</span>
+@if (compact) {
+  <!-- Vista compacta para header -->
+  <span
+    class="font-mono text-sm font-medium"
+    [ngClass]="{
+      'text-red-600 dark:text-red-400': isCritical(),
+      'text-orange-600 dark:text-orange-400': isWarning() && !isCritical(),
+      'text-gray-700 dark:text-gray-300': !isWarning()
+    }">
+    {{ formatTime(timeLeft.hours) }}:{{ formatTime(timeLeft.minutes) }}:{{ formatTime(timeLeft.seconds) }}
+  </span>
+} @else {
+  <!-- Vista completa original -->
+  <div class="mb-10">
+    <div
+      class="flex flex-wrap justify-center gap-2 mb-2 font-bold text-title-md text-brand-500 dark:text-brand-400 xl:text-title-lg"
+    >
+      <div class="timer-box">
+        <span>{{ formatTime(timeLeft.days) }}</span>
+      </div>
+      :
+      <div class="timer-box">
+        <span>{{ formatTime(timeLeft.hours) }}</span>
+      </div>
+      :
+      <div class="timer-box">
+        <span>{{ formatTime(timeLeft.minutes) }}</span>
+      </div>
+      :
+      <div class="timer-box">
+        <span>{{ formatTime(timeLeft.seconds) }}</span>
+      </div>
     </div>
-    :
-    <div class="timer-box">
-      <span>{{ formatTime(timeLeft.hours) }}</span>
-    </div>
-    :
-    <div class="timer-box">
-      <span>{{ formatTime(timeLeft.minutes) }}</span>
-    </div>
-    :
-    <div class="timer-box">
-      <span>{{ formatTime(timeLeft.seconds) }}</span>
-    </div>
-  </div>
 
-  <div class="text-base text-center text-gray-500 dark:text-gray-400">
-    <span class="inline-block timer-box">
-      <span class="inline-block">{{ timeLeft.days }}</span>
-    </span>
-    {{ timeLeft.days === 1 ? 'day' : 'days' }} left
+    <div class="text-base text-center text-gray-500 dark:text-gray-400">
+      <span class="inline-block timer-box">
+        <span class="inline-block">{{ timeLeft.days }}</span>
+      </span>
+      {{ timeLeft.days === 1 ? 'day' : 'days' }} left
+    </div>
   </div>
-</div>
+}
