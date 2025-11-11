@@ -29,8 +29,10 @@ public class DeviceRecovery {
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(
             name = "useId",
-            foreignKey = @ForeignKey(name = "fk_devrec_user")
-    )
+            foreignKey = @ForeignKey(
+                    name = "fk_devrec_user",
+                    foreignKeyDefinition = "FOREIGN KEY (use_id) REFERENCES app_user(use_id) ON DELETE CASCADE"
+            ))
     private User user;
 
     /** Fingerprint of the device from which the recovery was requested. */

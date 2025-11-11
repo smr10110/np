@@ -28,7 +28,7 @@ public class User {
     @JoinColumn(name = "credencial_id", referencedColumnName = "creId")
 	public Credencial credencial;
 
-    @OneToOne
+    @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "register_id", referencedColumnName = "regId")
 	public Register register;
 
