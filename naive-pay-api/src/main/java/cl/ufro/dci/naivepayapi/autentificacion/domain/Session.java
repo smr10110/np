@@ -8,7 +8,7 @@ import java.time.Instant;
 
 /**
  * Session entity representing a user session
- * REFACTORED: Now stores userId directly to avoid NULL issues when Device is unlinked
+ * REFACTORED: Now stores useId directly to avoid NULL issues when Device is unlinked
  * Maintains initialAuthAttempt for audit trail purposes
  */
 @Getter
@@ -28,9 +28,9 @@ public class Session {
     @Column(name = "ses_jti", nullable = false, unique = true)
     private java.util.UUID sesJti;
 
-    // CAMPO DESNORMALIZADO: userId directo para evitar NULL cuando se elimina Device
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    // CAMPO DESNORMALIZADO: useId directo para evitar NULL cuando se elimina Device
+    @Column(name = "use_id", nullable = false)
+    private Long useId;
 
     // Relación al AuthAttempt que inició esta sesión
     // NOTA: nullable = true para soportar sesiones huérfanas de migraciones/refactorizaciones anteriores

@@ -8,7 +8,7 @@ import cl.ufro.dci.naivepayapi.dispositivos.domain.Device;
 
 /**
  * AuthAttempt entity representing an authentication attempt
- * REFACTORED: Now stores userId directly to avoid NULL issues when Device is unlinked
+ * REFACTORED: Now stores useId directly to avoid NULL issues when Device is unlinked
  * Maintains device relationship for audit trail purposes
  */
 @Getter
@@ -25,9 +25,9 @@ public class AuthAttempt {
     @Column(name = "att_id")
     private Long attId;
 
-    // CAMPO DESNORMALIZADO: userId directo para evitar NULL cuando se elimina Device
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    // CAMPO DESNORMALIZADO: useId directo para evitar NULL cuando se elimina Device
+    @Column(name = "use_id", nullable = false)
+    private Long useId;
 
     // CAMPO DESNORMALIZADO: fingerprint del dispositivo para preservar auditoría
     // Se almacena el fingerprint hasheado al momento del intento
