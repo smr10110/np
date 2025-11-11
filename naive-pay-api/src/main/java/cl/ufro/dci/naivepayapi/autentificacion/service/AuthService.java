@@ -88,7 +88,18 @@ public class AuthService {
                 return forbidden(AuthAttemptReason.ACCOUNT_BLOCKED);
             }
 
-            // 4) Verificar contraseña
+            // 4) Verificar dispositivo autorizado (antes de validar contraseña)
+            try {
+                String safeFingerprint = (deviceFingerprint == null) ? "" : deviceFingerprint;
+                deviceService.ensureAuthorizedDevice(user.getUseId(), safeFingerprint);
+                logger.debug("Dispositivo verificado | userId={}", user.getUseId());
+            } catch (ResponseStatusException ex) {
+                logger.warn("Login rechazado: error de autorización de dispositivo | userId={} | reason={}",
+                    user.getUseId(), ex.getReason());
+                return handleDeviceAuthorizationError(user, ex);
+            }
+
+            // 5) Verificar contraseña
             if (!isValidPassword(user, req.getPassword())) {
                 logger.warn("Login rechazado: credenciales inválidas | userId={}", user.getUseId());
                 logFailedAttempt(user, AuthAttemptReason.BAD_CREDENTIALS);
@@ -120,17 +131,11 @@ public class AuthService {
                         ));
             }
 
-            // 5) Crear sesión autenticada con token y dispositivo autorizado
-            try {
-                LoginResponse response = createAuthenticatedSession(user, deviceFingerprint);
-                logger.info("Login exitoso | userId={} | email={} | jti={}",
-                    user.getUseId(), user.getRegister().getRegEmail(), response.getJti());
-                return ResponseEntity.ok(response);
-            } catch (ResponseStatusException ex) {
-                logger.warn("Login rechazado: error de autorización de dispositivo | userId={} | reason={}",
-                    user.getUseId(), ex.getReason());
-                return handleDeviceAuthorizationError(user, ex);
-            }
+            // 6) Crear sesión autenticada con token (dispositivo ya validado)
+            LoginResponse response = createAuthenticatedSession(user, deviceFingerprint);
+            logger.info("Login exitoso | userId={} | email={} | jti={}",
+                user.getUseId(), user.getRegister().getRegEmail(), response.getJti());
+            return ResponseEntity.ok(response);
         } finally {
             MDC.remove("identifier");
             MDC.remove("deviceFingerprint");
@@ -181,13 +186,13 @@ public class AuthService {
     // ----------------- Helpers - Login Flow -----------------
 
     /**
-     * Crea una sesión autenticada completa: genera token JWT, valida dispositivo y persiste sesión.
+     * Crea una sesión autenticada completa: genera token JWT y persiste sesión.
+     * El dispositivo ya debe estar validado antes de llamar a este método.
      * Sigue la cadena: Session -> AuthAttempt -> Device -> User
      *
      * @param user Usuario autenticado
      * @param deviceFingerprint Fingerprint del dispositivo
      * @return LoginResponse con token, expiración y session ID
-     * @throws ResponseStatusException si el dispositivo no está autorizado
      */
     private LoginResponse createAuthenticatedSession(User user, String deviceFingerprint) {
         logger.debug("Creando sesión autenticada | userId={}", user.getUseId());
@@ -205,11 +210,11 @@ public class AuthService {
 
         logger.debug("Token JWT generado | userId={} | jti={} | expiration={}", user.getUseId(), jti, exp);
 
-        // Validar y obtener dispositivo autorizado
-        Long userIdFromToken = Long.valueOf(jwtService.getUserId(token));
-        Device device = deviceService.ensureAuthorizedDevice(userIdFromToken, safeFingerprint);
+        // Obtener dispositivo (ya validado anteriormente)
+        Device device = deviceService.findByUserId(user.getUseId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Device should exist"));
 
-        logger.debug("Dispositivo autorizado | userId={} | fingerprint={}", user.getUseId(), device.getFingerprint());
+        logger.debug("Dispositivo obtenido | userId={} | fingerprint={}", user.getUseId(), device.getFingerprint());
 
         // 1. Crear AuthAttempt exitoso
         var initialAuthAttempt = authAttemptService.log(device, true, AuthAttemptReason.OK);
