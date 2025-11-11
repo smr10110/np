@@ -8,8 +8,8 @@ import cl.ufro.dci.naivepayapi.dispositivos.domain.Device;
 
 /**
  * AuthAttempt entity representing an authentication attempt
- * Follows the chain: AuthAttempt -> Device -> User
- * AuthAttempt has a relationship to Device, NOT directly to User or Session
+ * REFACTORED: Now stores userId directly to avoid NULL issues when Device is unlinked
+ * Maintains device relationship for audit trail purposes
  */
 @Getter
 @Setter
@@ -24,6 +24,10 @@ public class AuthAttempt {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "att_id")
     private Long attId;
+
+    // CAMPO DESNORMALIZADO: userId directo para evitar NULL cuando se elimina Device
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     // Relación al Device que realizó el intento
     // Optional = true para permitir conservar intentos históricos si el Device se elimina
@@ -41,7 +45,7 @@ public class AuthAttempt {
     @Column(name = "att_occurred", nullable = false)
     private Instant attOccurred;
 
-    // Método helper para obtener el User a través de Device
+    // Método helper para obtener el User a través de Device (ahora opcional, para auditoría)
     public cl.ufro.dci.naivepayapi.registro.domain.User getUser() {
         return device != null ? device.getUser() : null;
     }

@@ -14,7 +14,7 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Long> 
     /**
      * Obtiene los últimos N intentos de autenticación de un usuario
      * ordenados por fecha descendente (más reciente primero).
-     * Navega a través de: AuthAttempt -> Device -> User
+     * Usa el campo desnormalizado userId para evitar JOINs
      *
      * @param userId ID del usuario
      * @param pageable Paginación (usar PageRequest.of(0, 5) para obtener últimos 5)
@@ -22,7 +22,7 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Long> 
      */
     @Query("""
         SELECT a FROM AuthAttempt a
-        WHERE a.device.user.useId = :userId
+        WHERE a.userId = :userId
         ORDER BY a.attOccurred DESC
         """)
     List<AuthAttempt> findLatestAttemptsByUser(
@@ -32,7 +32,7 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Long> 
 
     /**
      * Cuenta los intentos fallidos de un usuario desde una fecha específica.
-     * Navega a través de: AuthAttempt -> Device -> User
+     * Usa el campo desnormalizado userId para evitar JOINs
      *
      * @param userId ID del usuario
      * @param since Fecha desde la cual contar (ej: hace 30 minutos)
@@ -40,7 +40,7 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Long> 
      */
     @Query("""
         SELECT COUNT(a) FROM AuthAttempt a
-        WHERE a.device.user.useId = :userId
+        WHERE a.userId = :userId
         AND a.attSuccess = false
         AND a.attOccurred > :since
         """)
@@ -51,11 +51,11 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Long> 
 
     /**
      * Obtiene la fecha/hora del último intento EXITOSO para poder reiniciar contador.
-     * Navega a través de: AuthAttempt -> Device -> User
+     * Usa el campo desnormalizado userId para evitar JOINs
      */
     @Query("""
         SELECT MAX(a.attOccurred) FROM AuthAttempt a
-        WHERE a.device.user.useId = :userId AND a.attSuccess = true
+        WHERE a.userId = :userId AND a.attSuccess = true
         """)
     Instant findLastSuccessAt(@Param("userId") Long userId);
 

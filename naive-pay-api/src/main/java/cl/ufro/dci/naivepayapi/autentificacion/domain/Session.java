@@ -8,8 +8,8 @@ import java.time.Instant;
 
 /**
  * Session entity representing a user session
- * Follows the chain: Session -> AuthAttempt -> Device -> User
- * Session does NOT have direct relationships to User or Device
+ * REFACTORED: Now stores userId directly to avoid NULL issues when Device is unlinked
+ * Maintains initialAuthAttempt for audit trail purposes
  */
 @Getter
 @Setter
@@ -27,6 +27,10 @@ public class Session {
 
     @Column(name = "ses_jti", nullable = false, unique = true)
     private java.util.UUID sesJti;
+
+    // CAMPO DESNORMALIZADO: userId directo para evitar NULL cuando se elimina Device
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     // Relación al AuthAttempt que inició esta sesión
     // NOTA: nullable = true para soportar sesiones huérfanas de migraciones/refactorizaciones anteriores
@@ -47,7 +51,7 @@ public class Session {
     @Column(name = "ses_status", nullable = false, length = 16)
     private SessionStatus status;
 
-    // Métodos helper para navegar la cadena Session -> AuthAttempt -> Device -> User
+    // Métodos helper para navegar la cadena (ahora opcionales, para auditoría)
     public cl.ufro.dci.naivepayapi.dispositivos.domain.Device getDevice() {
         return initialAuthAttempt != null ? initialAuthAttempt.getDevice() : null;
     }
