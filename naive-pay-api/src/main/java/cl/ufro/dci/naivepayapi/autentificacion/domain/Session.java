@@ -6,6 +6,11 @@ import cl.ufro.dci.naivepayapi.autentificacion.domain.enums.SessionStatus;
 
 import java.time.Instant;
 
+/**
+ * Session entity representing a user session
+ * REFACTORED: Now stores useId directly to avoid NULL issues when Device is unlinked
+ * Maintains initialAuthAttempt for audit trail purposes
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,19 +28,21 @@ public class Session {
     @Column(name = "ses_jti", nullable = false, unique = true)
     private java.util.UUID sesJti;
 
+    // CAMPO DESNORMALIZADO: useId directo para evitar NULL cuando se elimina Device
+    @Column(name = "use_id", nullable = false)
+    private Long useId;
+
     // Relación al AuthAttempt que inició esta sesión
-    // ON DELETE CASCADE: Cuando se elimina el AuthAttempt (y por transitividad el Device),
-    // se eliminan automáticamente todas las sesiones asociadas
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    // NOTA: nullable = true para soportar sesiones huérfanas de migraciones/refactorizaciones anteriores
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(
-        name = "att_id_initial",
-        nullable = false,
-        referencedColumnName = "att_id",
-        foreignKey = @ForeignKey(
-            name = "fk_session_auth_attempt",
-            foreignKeyDefinition = "FOREIGN KEY (att_id_initial) REFERENCES attempt_auth(att_id) ON DELETE CASCADE"
-        )
-    )
+            name = "att_id_initial",
+            nullable = true,
+            referencedColumnName = "att_id",
+            foreignKey = @ForeignKey(
+                    name = "fk_session_auth_attempt",
+                    foreignKeyDefinition = "FOREIGN KEY (att_id_initial) REFERENCES attempt_auth(att_id) ON DELETE SET NULL"
+            ))
     private AuthAttempt initialAuthAttempt;
 
     @Column(name = "ses_created", nullable = false)
@@ -51,7 +58,7 @@ public class Session {
     @Column(name = "ses_status", nullable = false, length = 16)
     private SessionStatus status;
 
-    // Métodos helper para navegar la cadena
+    // Métodos helper para navegar la cadena (ahora opcionales, para auditoría)
     public cl.ufro.dci.naivepayapi.dispositivos.domain.Device getDevice() {
         return initialAuthAttempt != null ? initialAuthAttempt.getDevice() : null;
     }

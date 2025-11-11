@@ -26,8 +26,12 @@ public class DeviceLog {
     /** User associated with the device action */
     @JsonIgnore
     @ManyToOne(optional = false)
-    @JoinColumn(name = "useId",
-                foreignKey = @ForeignKey(name = "fk_devlog_user"))
+    @JoinColumn(
+            name = "useId",
+            foreignKey = @ForeignKey(
+                    name = "fk_devlog_user",
+                    foreignKeyDefinition = "FOREIGN KEY (use_id) REFERENCES app_user(use_id) ON DELETE CASCADE"
+            ))
     private User user;
 
     /** Device involved in the logged event, if still present in the system. */
@@ -35,8 +39,10 @@ public class DeviceLog {
     @ManyToOne
     @JoinColumn(
             name = "dev_fingerprint",
-            foreignKey = @ForeignKey(name = "fk_devlog_device")
-    )
+            foreignKey = @ForeignKey(
+                    name = "fk_devlog_device",
+                    foreignKeyDefinition = "FOREIGN KEY (dev_fingerprint) REFERENCES device(dev_fingerprint) ON DELETE SET NULL"
+            ))
     private Device device;
 
     // ==================== Snapshots (to store the data of the device since we eliminate the devices when we replace them) ====================

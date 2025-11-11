@@ -21,7 +21,13 @@ public class PasswordRecovery {
     private Long pasId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "use_id", nullable = false)
+    @JoinColumn(
+            name = "use_id",
+            nullable = false,
+            foreignKey = @ForeignKey(
+                    name = "fk_password_recovery_user",
+                    foreignKeyDefinition = "FOREIGN KEY (use_id) REFERENCES app_user(use_id) ON DELETE CASCADE"
+            ))
     private User user;
 
     @Column(name = "pas_code", nullable = false, length = 40)

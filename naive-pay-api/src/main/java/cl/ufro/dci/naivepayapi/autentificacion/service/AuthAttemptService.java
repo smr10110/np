@@ -27,6 +27,8 @@ public class AuthAttemptService {
      */
     public AuthAttempt log(Device device, boolean success, AuthAttemptReason reason) {
         var attempt = AuthAttempt.builder()
+                .useId(device.getUser().getUseId())  // Campo desnormalizado
+                .deviceFingerprintSnapshot(device.getFingerprint())  // Preserva fingerprint hasheado
                 .device(device)
                 .attSuccess(success)
                 .attReason(reason)

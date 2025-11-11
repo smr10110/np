@@ -37,8 +37,11 @@ public class Device {
      */
     @OneToOne(optional = false)
     @JoinColumn(
-            name = "useId",
-            foreignKey = @ForeignKey(name = "fk_dev_user"))
+            name = "use_id",
+            foreignKey = @ForeignKey(
+                    name = "fk_dev_user",
+                    foreignKeyDefinition = "FOREIGN KEY (use_id) REFERENCES app_user(use_id) ON DELETE CASCADE"
+            ))
     private User user;
 
     /**

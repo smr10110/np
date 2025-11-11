@@ -90,7 +90,12 @@ public class FundTransaction {
      * </p>
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "origin_account_id")
+    @JoinColumn(
+            name = "origin_account_id",
+            foreignKey = @ForeignKey(
+                    name = "fk_transaction_origin_account",
+                    foreignKeyDefinition = "FOREIGN KEY (origin_account_id) REFERENCES accounts(id) ON DELETE RESTRICT"
+            ))
     private Account originAccount;
 
     /**
@@ -104,7 +109,12 @@ public class FundTransaction {
      * </p>
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "destination_account_id")
+    @JoinColumn(
+            name = "destination_account_id",
+            foreignKey = @ForeignKey(
+                    name = "fk_transaction_destination_account",
+                    foreignKeyDefinition = "FOREIGN KEY (destination_account_id) REFERENCES accounts(id) ON DELETE RESTRICT"
+            ))
     private Account destinationAccount;
 
     /**

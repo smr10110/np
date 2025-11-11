@@ -72,26 +72,36 @@ public class AuthService {
             MDC.put("userId", String.valueOf(user.getUseId()));
             MDC.put("email", user.getRegister().getRegEmail());
 
-            // 2) Verificar si la cuenta está bloqueada
+            // 2) Verificar que el email esté verificado
+            if (!user.getRegister().isRegVerified()) {
+                logger.warn("Login rechazado: email no verificado | userId={} | email={}",
+                    user.getUseId(), user.getRegister().getRegEmail());
+                logFailedAttempt(user, AuthAttemptReason.EMAIL_NOT_VERIFIED);
+                return forbidden(AuthAttemptReason.EMAIL_NOT_VERIFIED);
+            }
+
+            // 3) Verificar si la cuenta está bloqueada
             if (accountLockService.isAccountLocked(user)) {
                 logger.warn("Login rechazado: cuenta bloqueada | userId={} | email={}",
-                        user.getUseId(), user.getRegister().getRegEmail());
+                    user.getUseId(), user.getRegister().getRegEmail());
                 logFailedAttempt(user, AuthAttemptReason.ACCOUNT_BLOCKED);
                 return forbidden(AuthAttemptReason.ACCOUNT_BLOCKED);
             }
 
-            // 3) Verificar contraseña
+            // 4) Verificar dispositivo autorizado (antes de validar contraseña)
+            try {
+                String safeFingerprint = (deviceFingerprint == null) ? "" : deviceFingerprint;
+                deviceService.ensureAuthorizedDevice(user.getUseId(), safeFingerprint);
+                logger.debug("Dispositivo verificado | userId={}", user.getUseId());
+            } catch (ResponseStatusException ex) {
+                logger.warn("Login rechazado: error de autorización de dispositivo | userId={} | reason={}",
+                    user.getUseId(), ex.getReason());
+                return handleDeviceAuthorizationError(user, ex);
+            }
+
+            // 5) Verificar contraseña
             if (!isValidPassword(user, req.getPassword())) {
                 logger.warn("Login rechazado: credenciales inválidas | userId={}", user.getUseId());
-
-                // Si no tiene device, no podemos registrar el intento ni mostrar contador
-                // Simplemente retornamos error genérico de credenciales incorrectas
-                if (deviceService.findByUserId(user.getUseId()).isEmpty()) {
-                    logger.debug("Usuario sin device, retornando error genérico | userId={}", user.getUseId());
-                    return unauthorized(AuthAttemptReason.BAD_CREDENTIALS);
-                }
-
-                // Con device: registrar intento y mostrar contador
                 logFailedAttempt(user, AuthAttemptReason.BAD_CREDENTIALS);
 
                 // Verificar y bloquear cuenta si es necesario después de fallo
@@ -121,17 +131,11 @@ public class AuthService {
                         ));
             }
 
-            // 4) Crear sesión autenticada con token y dispositivo autorizado
-            try {
-                LoginResponse response = createAuthenticatedSession(user, deviceFingerprint);
-                logger.info("Login exitoso | userId={} | email={} | jti={}",
-                        user.getUseId(), user.getRegister().getRegEmail(), response.getJti());
-                return ResponseEntity.ok(response);
-            } catch (ResponseStatusException ex) {
-                logger.warn("Login rechazado: error de autorización de dispositivo | userId={} | reason={}",
-                        user.getUseId(), ex.getReason());
-                return handleDeviceAuthorizationError(user, ex);
-            }
+            // 6) Crear sesión autenticada con token (dispositivo ya validado)
+            LoginResponse response = createAuthenticatedSession(user, deviceFingerprint);
+            logger.info("Login exitoso | userId={} | email={} | jti={}",
+                user.getUseId(), user.getRegister().getRegEmail(), response.getJti());
+            return ResponseEntity.ok(response);
         } finally {
             MDC.remove("identifier");
             MDC.remove("deviceFingerprint");
@@ -182,13 +186,13 @@ public class AuthService {
     // ----------------- Helpers - Login Flow -----------------
 
     /**
-     * Crea una sesión autenticada completa: genera token JWT, valida dispositivo y persiste sesión.
+     * Crea una sesión autenticada completa: genera token JWT y persiste sesión.
+     * El dispositivo ya debe estar validado antes de llamar a este método.
      * Sigue la cadena: Session -> AuthAttempt -> Device -> User
      *
      * @param user Usuario autenticado
      * @param deviceFingerprint Fingerprint del dispositivo
      * @return LoginResponse con token, expiración y session ID
-     * @throws ResponseStatusException si el dispositivo no está autorizado
      */
     private LoginResponse createAuthenticatedSession(User user, String deviceFingerprint) {
         logger.debug("Creando sesión autenticada | userId={}", user.getUseId());
@@ -206,11 +210,11 @@ public class AuthService {
 
         logger.debug("Token JWT generado | userId={} | jti={} | expiration={}", user.getUseId(), jti, exp);
 
-        // Validar y obtener dispositivo autorizado
-        Long userIdFromToken = Long.valueOf(jwtService.getUserId(token));
-        Device device = deviceService.ensureAuthorizedDevice(userIdFromToken, safeFingerprint);
+        // Obtener dispositivo (ya validado anteriormente)
+        Device device = deviceService.findByUserId(user.getUseId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Device should exist"));
 
-        logger.debug("Dispositivo autorizado | userId={} | fingerprint={}", user.getUseId(), device.getFingerprint());
+        logger.debug("Dispositivo obtenido | userId={} | fingerprint={}", user.getUseId(), device.getFingerprint());
 
         // 1. Crear AuthAttempt exitoso
         var initialAuthAttempt = authAttemptService.log(device, true, AuthAttemptReason.OK);
@@ -246,13 +250,11 @@ public class AuthService {
         String reason = ex.getReason();
 
         if (AuthAttemptReason.DEVICE_REQUIRED.name().equals(reason)) {
-            // No se registra el intento porque no hay dispositivo vinculado
-            // El usuario debe vincular un dispositivo primero
+            logFailedAttempt(user, AuthAttemptReason.DEVICE_REQUIRED);
             return forbidden(AuthAttemptReason.DEVICE_REQUIRED);
         }
 
         if (AuthAttemptReason.DEVICE_UNAUTHORIZED.name().equals(reason)) {
-            // Registrar intento fallido con el dispositivo existente (viejo)
             logFailedAttempt(user, AuthAttemptReason.DEVICE_UNAUTHORIZED);
             return forbidden(AuthAttemptReason.DEVICE_UNAUTHORIZED);
         }
@@ -345,7 +347,7 @@ public class AuthService {
         int remaining = Math.max(0, maxFailedAttempts - (int) failedCount);
 
         logger.debug("Intentos restantes calculados | userId={} | failedCount={} | remaining={}",
-                user.getUseId(), failedCount, remaining);
+            user.getUseId(), failedCount, remaining);
 
         return remaining;
     }
@@ -354,32 +356,12 @@ public class AuthService {
 
     /** Construye respuesta 401 Unauthorized con el motivo del rechazo. */
     private static ResponseEntity<Map<String, Object>> unauthorized(AuthAttemptReason reason) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-                "error", reason.name(),
-                "message", getErrorMessage(reason)
-        ));
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", reason.name()));
     }
 
     /** Construye respuesta 403 Forbidden con el motivo del rechazo. */
     private static ResponseEntity<Map<String, Object>> forbidden(AuthAttemptReason reason) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                "error", reason.name(),
-                "message", getErrorMessage(reason)
-        ));
-    }
-
-    /**
-     * Retorna un mensaje amigable para el usuario según el tipo de error.
-     */
-    private static String getErrorMessage(AuthAttemptReason reason) {
-        return switch (reason) {
-            case DEVICE_REQUIRED -> "No tienes un dispositivo vinculado a tu cuenta";
-            case DEVICE_UNAUTHORIZED -> "Este dispositivo no está autorizado para acceder a tu cuenta";
-            case BAD_CREDENTIALS -> "Credenciales incorrectas";
-            case ACCOUNT_BLOCKED -> "Tu cuenta ha sido bloqueada temporalmente por seguridad";
-            case USER_NOT_FOUND -> "Usuario no encontrado";
-            default -> "Error de autenticación";
-        };
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", reason.name()));
     }
 
     /** Construye respuesta 401 Unauthorized genérica para errores de logout. */
