@@ -245,7 +245,7 @@ public class DeviceRecoveryService {
         Instant exp = jwtService.getExpiration(token);
 
         // 1. Crear AuthAttempt exitoso para device recovery
-        var initialAuthAttempt = authAttemptService.log(savedDevice, null, true, AuthAttemptReason.OK);
+        var initialAuthAttempt = authAttemptService.log(savedDevice, true, AuthAttemptReason.OK);
 
         // 2. Crear Session con el AuthAttempt
         var session = authSessionService.saveActiveSession(jti, initialAuthAttempt, exp);
