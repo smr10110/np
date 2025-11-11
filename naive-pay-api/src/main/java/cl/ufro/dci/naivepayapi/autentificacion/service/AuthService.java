@@ -72,7 +72,15 @@ public class AuthService {
             MDC.put("userId", String.valueOf(user.getUseId()));
             MDC.put("email", user.getRegister().getRegEmail());
 
-            // 2) Verificar si la cuenta está bloqueada
+            // 2) Verificar que el email esté verificado
+            if (!user.getRegister().isRegVerified()) {
+                logger.warn("Login rechazado: email no verificado | userId={} | email={}",
+                    user.getUseId(), user.getRegister().getRegEmail());
+                logFailedAttempt(user, AuthAttemptReason.EMAIL_NOT_VERIFIED);
+                return forbidden(AuthAttemptReason.EMAIL_NOT_VERIFIED);
+            }
+
+            // 3) Verificar si la cuenta está bloqueada
             if (accountLockService.isAccountLocked(user)) {
                 logger.warn("Login rechazado: cuenta bloqueada | userId={} | email={}",
                     user.getUseId(), user.getRegister().getRegEmail());
@@ -80,7 +88,7 @@ public class AuthService {
                 return forbidden(AuthAttemptReason.ACCOUNT_BLOCKED);
             }
 
-            // 3) Verificar contraseña
+            // 4) Verificar contraseña
             if (!isValidPassword(user, req.getPassword())) {
                 logger.warn("Login rechazado: credenciales inválidas | userId={}", user.getUseId());
                 logFailedAttempt(user, AuthAttemptReason.BAD_CREDENTIALS);
@@ -112,7 +120,7 @@ public class AuthService {
                         ));
             }
 
-            // 4) Crear sesión autenticada con token y dispositivo autorizado
+            // 5) Crear sesión autenticada con token y dispositivo autorizado
             try {
                 LoginResponse response = createAuthenticatedSession(user, deviceFingerprint);
                 logger.info("Login exitoso | userId={} | email={} | jti={}",
