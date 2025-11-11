@@ -1,0 +1,203 @@
+@startuml NaivePay Database Schema
+
+' Configuración del estilo
+skinparam linetype ortho
+skinparam class {
+    BackgroundColor<<Entity>> LightBlue
+    BorderColor Black
+    ArrowColor Black
+}
+
+' ===== MÓDULO DE REGISTRO Y AUTENTICACIÓN =====
+
+entity "app_user" as user <<Entity>> {
+  * use_id : BIGINT <<PK>>
+  --
+  use_names : VARCHAR
+  use_last_names : VARCHAR
+  use_rut_general : BIGINT
+  use_verification_digit : CHAR(1)
+  use_birth_date : DATE
+  use_phone_number : BIGINT
+  use_profession : VARCHAR
+  use_state : VARCHAR
+  use_adress : VARCHAR
+  credencial_id : BIGINT <<FK>>
+  register_id : BIGINT <<FK>>
+}
+
+entity "credencial" as credencial <<Entity>> {
+  * cre_id : BIGINT <<PK>>
+  --
+  cre_creation_date : TIMESTAMP
+  cre_denied : BOOLEAN
+  cre_active_dinamic_key : BOOLEAN
+  cre_private_key_rsa : TEXT
+  cre_public_key_rsa : TEXT
+}
+
+entity "device" as device <<Entity>> {
+  * dev_fingerprint : VARCHAR(100) <<PK>>
+  --
+  * use_id : BIGINT <<FK>>
+  dev_type : VARCHAR(100)
+  dev_os : VARCHAR(100)
+  dev_browser : VARCHAR(100)
+  dev_reg_date : TIMESTAMP
+  dev_last_login : TIMESTAMP
+}
+
+entity "attempt_auth" as auth_attempt <<Entity>> {
+  * att_id : BIGINT <<PK>>
+  --
+  dev_fingerprint : VARCHAR(100) <<FK>>
+  att_success : BOOLEAN
+  att_reason : VARCHAR(40)
+  att_occurred : TIMESTAMP
+}
+
+entity "session" as session <<Entity>> {
+  * ses_id : BIGINT <<PK>>
+  --
+  * ses_jti : UUID <<UNIQUE>>
+  att_id_initial : BIGINT <<FK>>
+  ses_created : TIMESTAMP
+  ses_expires : TIMESTAMP
+  ses_closed : TIMESTAMP
+  ses_status : VARCHAR(16)
+}
+
+' ===== MÓDULO DE FONDOS =====
+
+entity "accounts" as account <<Entity>> {
+  * id : BIGINT <<PK>>
+  --
+  * user_id : BIGINT <<FK, UNIQUE>>
+  available_balance : DECIMAL(15,2)
+  creation_date : TIMESTAMP
+  last_update : TIMESTAMP
+}
+
+entity "transactions" as fund_transaction <<Entity>> {
+  * id : BIGINT <<PK>>
+  --
+  amount : DECIMAL(15,2)
+  date_time : TIMESTAMP
+  description : VARCHAR(255)
+  transaction_type : VARCHAR(20)
+  origin_account_id : BIGINT <<FK>>
+  destination_account_id : BIGINT <<FK>>
+  customer_name : VARCHAR
+  commerce_name : VARCHAR
+  payment_category : VARCHAR
+  transaction_status : VARCHAR
+}
+
+' ===== MÓDULO DE PAGOS =====
+
+entity "payment_transaction" as payment_transaction <<Entity>> {
+  * id : BIGINT <<PK>>
+  --
+  origin_account : BIGINT
+  destination_account : BIGINT
+  customer : VARCHAR
+  commerce : VARCHAR
+  amount : DECIMAL
+  category : VARCHAR
+  status : VARCHAR
+  created_at : TIMESTAMP
+}
+
+' ===== MÓDULO DE COMERCIO =====
+
+entity "commerce" as commerce <<Entity>> {
+  * com_id : BIGINT <<PK>>
+  --
+  ' CommerceInfo (Embedded)
+  com_info... : EMBEDDED
+  ' VerificationStatus (Embedded)
+  com_verification_status... : EMBEDDED
+}
+
+entity "commerce_category" as commerce_category <<Entity>> {
+  * category_id : BIGINT <<PK>>
+  --
+  category_name : VARCHAR
+}
+
+entity "commerce_category_join" as commerce_category_join <<Join Table>> {
+  * commerce_id : BIGINT <<FK>>
+  * category_id : BIGINT <<FK>>
+}
+
+' ===== MÓDULO DE RECOMPENSAS =====
+
+entity "reward_account" as reward_account <<Entity>> {
+  * id : BIGINT <<PK>>
+  --
+  user_id : BIGINT <<FK>>
+  reward_balance : DECIMAL
+  creation_date : TIMESTAMP
+  last_update : TIMESTAMP
+}
+
+entity "reward_transaction" as reward_transaction <<Entity>> {
+  * id : BIGINT <<PK>>
+  --
+  reward_account_id : BIGINT <<FK>>
+  amount : DECIMAL
+  transaction_type : VARCHAR
+  transaction_status : VARCHAR
+  date_time : TIMESTAMP
+  description : VARCHAR
+}
+
+' ===== RELACIONES =====
+
+' Módulo de Registro y Autenticación
+user ||--|| credencial : "has"
+user ||--o| device : "owns"
+device ||--o{ auth_attempt : "makes"
+auth_attempt ||--o{ session : "initiates"
+
+' Módulo de Fondos
+user ||--|| account : "has"
+account ||--o{ fund_transaction : "origin"
+account ||--o{ fund_transaction : "destination"
+
+' Módulo de Comercio
+commerce }o--o{ commerce_category : "belongs to"
+commerce_category_join }o--|| commerce : ""
+commerce_category_join }o--|| commerce_category : ""
+
+' Módulo de Recompensas
+user ||--o| reward_account : "has"
+reward_account ||--o{ reward_transaction : "contains"
+
+' Notas importantes
+note right of session
+  Cadena de navegación:
+  Session -> AuthAttempt -> Device -> User
+
+  Session NO tiene relación directa
+  con User o Device
+end note
+
+note right of device
+  Relación 1:1 con User
+  Un usuario solo puede tener
+  un dispositivo registrado
+end note
+
+note right of account
+  Relación 1:1 con User
+  user_id es UNIQUE
+end note
+
+note right of fund_transaction
+  Tipos: LOAD, TRANSFER, PAYMENT
+  origin_account puede ser NULL
+  en transacciones tipo LOAD
+end note
+
+@enduml

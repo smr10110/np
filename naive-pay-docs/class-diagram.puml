@@ -1,0 +1,270 @@
+@startuml NaivePay Class Diagram
+
+' Configuración
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+' ===== MÓDULO DE REGISTRO Y AUTENTICACIÓN =====
+
+package "cl.ufro.dci.naivepayapi.registro.domain" {
+  class User {
+    - useId: Long
+    - useNames: String
+    - useLastNames: String
+    - useRutGeneral: Long
+    - useVerificationDigit: char
+    - useBirthDate: LocalDate
+    - usePhoneNumber: Long
+    - useProfession: String
+    - useState: AccountState
+    - useAdress: String
+    --
+    + credencial: Credencial
+    + register: Register
+  }
+
+  class Credencial {
+    - creId: Long
+    - creCreationDate: Date
+    - creDenied: Boolean
+    - creActiveDinamicKey: Boolean
+    - crePrivateKeyRsa: String
+    - crePublicKeyRsa: String
+    --
+    - user: User
+    + creChanges: List<Change>
+  }
+
+  enum AccountState {
+    ACTIVE
+    INACTIVE
+    SUSPENDED
+  }
+}
+
+package "cl.ufro.dci.naivepayapi.dispositivos.domain" {
+  class Device {
+    - fingerprint: String
+    - type: String
+    - os: String
+    - browser: String
+    - registeredAt: Instant
+    - lastLoginAt: Instant
+    --
+    - user: User
+    --
+    + getUser(): User
+  }
+}
+
+package "cl.ufro.dci.naivepayapi.autentificacion.domain" {
+  class AuthAttempt {
+    - attId: Long
+    - attSuccess: boolean
+    - attReason: AuthAttemptReason
+    - attOccurred: Instant
+    --
+    - device: Device
+    --
+    + getUser(): User
+  }
+
+  class Session {
+    - sesId: Long
+    - sesJti: UUID
+    - sesCreated: Instant
+    - sesExpires: Instant
+    - sesClosed: Instant
+    - status: SessionStatus
+    --
+    - initialAuthAttempt: AuthAttempt
+    --
+    + getDevice(): Device
+    + getUser(): User
+  }
+
+  enum SessionStatus {
+    ACTIVE
+    EXPIRED
+    CLOSED
+  }
+
+  enum AuthAttemptReason {
+    VALID_CREDENTIALS
+    INVALID_CREDENTIALS
+    ACCOUNT_LOCKED
+    DEVICE_NOT_REGISTERED
+  }
+}
+
+' ===== MÓDULO DE FONDOS =====
+
+package "cl.ufro.dci.naivepayapi.fondos.domain" {
+  class Account {
+    - id: Long
+    - userId: Long
+    - availableBalance: BigDecimal
+    - creationDate: LocalDateTime
+    - lastUpdate: LocalDateTime
+    --
+    + updateBalance(newBalance: BigDecimal): void
+  }
+
+  class FundTransaction {
+    - id: Long
+    - amount: BigDecimal
+    - dateTime: LocalDateTime
+    - description: String
+    - type: TransactionType
+    - customerName: String
+    - commerceName: String
+    - paymentCategory: String
+    - status: TransactionStatus
+    --
+    - originAccount: Account
+    - destinationAccount: Account
+  }
+
+  enum TransactionType {
+    LOAD
+    TRANSFER
+    PAYMENT
+  }
+
+  enum TransactionStatus {
+    PENDING
+    APPROVED
+    REJECTED
+    COMPLETED
+  }
+}
+
+' ===== MÓDULO DE PAGOS =====
+
+package "cl.ufro.dci.naivepayapi.pagos.domain" {
+  class PaymentTransaction {
+    - id: Long
+    - originAccount: Long
+    - destinationAccount: Long
+    - customer: String
+    - commerce: String
+    - amount: BigDecimal
+    - category: String
+    - status: PaymentTransactionStatus
+    - createdAt: LocalDateTime
+  }
+
+  enum PaymentTransactionStatus {
+    PENDING
+    COMPLETED
+    FAILED
+    CANCELLED
+  }
+}
+
+' ===== MÓDULO DE COMERCIO =====
+
+package "cl.ufro.dci.naivepayapi.comercio.domain" {
+  class Commerce {
+    - comId: Long
+    --
+    - comInfo: CommerceInfo
+    - comVerificationStatus: VerificationStatus
+    + comCategories: Set<CommerceCategory>
+  }
+
+  class CommerceInfo <<Embeddable>> {
+    - name: String
+    - description: String
+    - address: String
+    - phone: String
+  }
+
+  class VerificationStatus <<Embeddable>> {
+    - verified: boolean
+    - verificationDate: LocalDateTime
+  }
+
+  class CommerceCategory {
+    - id: Long
+    - name: String
+  }
+}
+
+' ===== MÓDULO DE RECOMPENSAS =====
+
+package "cl.ufro.dci.naivepayapi.recompensas.domain" {
+  class RewardAccount {
+    - id: Long
+    - userId: Long
+    - rewardBalance: BigDecimal
+    - creationDate: LocalDateTime
+    - lastUpdate: LocalDateTime
+  }
+
+  class RewardTransaction {
+    - id: Long
+    - amount: BigDecimal
+    - transactionType: RewardTransactionType
+    - transactionStatus: RewardTransactionStatus
+    - dateTime: LocalDateTime
+    - description: String
+    --
+    - rewardAccount: RewardAccount
+  }
+
+  enum RewardTransactionType {
+    EARN
+    REDEEM
+    EXPIRE
+  }
+
+  enum RewardTransactionStatus {
+    PENDING
+    COMPLETED
+    CANCELLED
+  }
+}
+
+' ===== RELACIONES =====
+
+' Autenticación
+User "1" -- "1" Credencial : has >
+User "1" -- "0..1" Device : owns >
+Device "1" -- "0..*" AuthAttempt : makes >
+AuthAttempt "1" -- "0..*" Session : initiates >
+
+' Fondos
+User "1" -- "1" Account : has >
+Account "0..1" -- "0..*" FundTransaction : origin <
+Account "1" -- "0..*" FundTransaction : destination <
+
+' Comercio
+Commerce "0..*" -- "0..*" CommerceCategory : belongs to >
+Commerce *-- CommerceInfo
+Commerce *-- VerificationStatus
+
+' Recompensas
+User "1" -- "0..1" RewardAccount : has >
+RewardAccount "1" -- "0..*" RewardTransaction : contains >
+
+' Asociaciones con enums
+User -- AccountState
+Session -- SessionStatus
+AuthAttempt -- AuthAttemptReason
+FundTransaction -- TransactionType
+FundTransaction -- TransactionStatus
+PaymentTransaction -- PaymentTransactionStatus
+RewardTransaction -- RewardTransactionType
+RewardTransaction -- RewardTransactionStatus
+
+note as N1
+  <b>Cadena de Relaciones de Sesión</b>
+  Session -> AuthAttempt -> Device -> User
+
+  Las entidades siguen el patrón de navegación
+  unidireccional para mantener la integridad
+  referencial.
+end note
+
+@enduml
