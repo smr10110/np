@@ -29,6 +29,12 @@ public class AuthAttempt {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    // CAMPO DESNORMALIZADO: fingerprint del dispositivo para preservar auditoría
+    // Se almacena el fingerprint hasheado al momento del intento
+    // Esto permite rastrear el dispositivo incluso después de que sea eliminado
+    @Column(name = "dev_fingerprint_snapshot", length = 100)
+    private String deviceFingerprintSnapshot;
+
     // Relación al Device que realizó el intento
     // Optional = true para permitir conservar intentos históricos si el Device se elimina
     // ON DELETE SET NULL: La DB automáticamente pone device=NULL cuando se elimina el Device
