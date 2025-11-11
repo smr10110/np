@@ -30,7 +30,7 @@ public class Session {
 
     // Relación al AuthAttempt que inició esta sesión
     // NOTA: nullable = true para soportar sesiones huérfanas de migraciones/refactorizaciones anteriores
-    @ManyToOne(fetch = FetchType.EAGER, optional = true)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "att_id_initial", nullable = true, referencedColumnName = "att_id")
     private AuthAttempt initialAuthAttempt;
 
