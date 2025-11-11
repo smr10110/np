@@ -58,4 +58,19 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Long> 
         WHERE a.device.user.useId = :userId AND a.attSuccess = true
         """)
     Instant findLastSuccessAt(@Param("userId") Long userId);
+
+    /**
+     * Desacopla todos los AuthAttempts de un dispositivo específico.
+     * Establece device = null para todos los intentos asociados al Device dado.
+     * Esto es necesario antes de eliminar un Device para evitar violaciones de integridad referencial.
+     *
+     * @param deviceFingerprint Fingerprint del dispositivo a desacoplar
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("""
+        UPDATE AuthAttempt a
+        SET a.device = null
+        WHERE a.device.fingerprint = :deviceFingerprint
+        """)
+    void detachAuthAttemptsFromDevice(@Param("deviceFingerprint") String deviceFingerprint);
 }

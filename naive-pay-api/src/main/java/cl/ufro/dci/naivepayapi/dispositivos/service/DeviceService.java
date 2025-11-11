@@ -5,6 +5,7 @@ import cl.ufro.dci.naivepayapi.dispositivos.domain.DeviceLog;
 import cl.ufro.dci.naivepayapi.dispositivos.repository.DeviceLogRepository;
 import cl.ufro.dci.naivepayapi.dispositivos.repository.DeviceRepository;
 import cl.ufro.dci.naivepayapi.autentificacion.repository.SessionRepository;
+import cl.ufro.dci.naivepayapi.autentificacion.repository.AuthAttemptRepository;
 import cl.ufro.dci.naivepayapi.registro.domain.User;
 import cl.ufro.dci.naivepayapi.registro.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class DeviceService {
     private final DeviceLogRepository devLogRepo;
     private final UserRepository userRepo;
     private final SessionRepository sessionRepo;
+    private final AuthAttemptRepository authAttemptRepo;
     private final PasswordEncoder passEncoderService;
 
     /**
@@ -128,9 +130,9 @@ public class DeviceService {
 
         devLogRepo.detachDeviceFromLogs(oldDevice);
 
-        // Con el nuevo modelo Session -> AuthAttempt -> Device -> User,
-        // JPA establece automáticamente device = null en AuthAttempt cuando se elimina el Device
-        // ya que AuthAttempt.device es opcional (optional = true)
+        // Desacoplar todos los AuthAttempts antes de eliminar el Device
+        // para evitar violaciones de integridad referencial
+        authAttemptRepo.detachAuthAttemptsFromDevice(oldDevice.getFingerprint());
 
         devRepo.delete(oldDevice);
         devRepo.flush();
@@ -237,9 +239,9 @@ public class DeviceService {
 
             devLogRepo.detachDeviceFromLogs(device);
 
-            // Con el nuevo modelo Session -> AuthAttempt -> Device -> User,
-            // JPA establece automáticamente device = null en AuthAttempt cuando se elimina el Device
-            // ya que AuthAttempt.device es opcional (optional = true)
+            // Desacoplar todos los AuthAttempts antes de eliminar el Device
+            // para evitar violaciones de integridad referencial
+            authAttemptRepo.detachAuthAttemptsFromDevice(device.getFingerprint());
 
             devRepo.delete(device);
             devRepo.flush();
