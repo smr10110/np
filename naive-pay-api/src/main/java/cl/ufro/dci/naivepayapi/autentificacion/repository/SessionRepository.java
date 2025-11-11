@@ -27,23 +27,4 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
            "WHERE s.sesJti = :sesJti")
     Optional<Session> findBySesJti(@Param("sesJti") UUID sesJti);
 
-    // NOTA: Con el nuevo modelo Session -> AuthAttempt -> Device -> User,
-    // Session ya no tiene relación directa con Device.
-    // Si se necesita desvincular dispositivos, debe hacerse a nivel de AuthAttempt.
-    // El método detachDeviceByFingerprint ha sido removido ya que no es compatible con el nuevo modelo.
-
-    /**
-     * Encuentra sesiones que tienen att_id_initial null (sesiones antiguas antes de la refactorización)
-     * Útil para identificar y limpiar datos inconsistentes
-     */
-    @Query("SELECT s FROM Session s WHERE s.initialAuthAttempt IS NULL")
-    List<Session> findOrphanedSessions();
-
-    /**
-     * Cierra todas las sesiones huérfanas (sin AuthAttempt inicial válido)
-     */
-    @Modifying
-    @Query("UPDATE Session s SET s.status = 'CLOSED', s.sesClosed = CURRENT_TIMESTAMP " +
-           "WHERE s.initialAuthAttempt IS NULL AND s.status <> 'CLOSED'")
-    int closeOrphanedSessions();
 }

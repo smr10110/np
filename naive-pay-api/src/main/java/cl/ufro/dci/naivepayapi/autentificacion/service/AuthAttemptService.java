@@ -27,7 +27,6 @@ public class AuthAttemptService {
      */
     public AuthAttempt log(Device device, boolean success, AuthAttemptReason reason) {
         var attempt = AuthAttempt.builder()
-                .userId(device.getUser().getUseId())  // Campo desnormalizado
                 .device(device)
                 .attSuccess(success)
                 .attReason(reason)

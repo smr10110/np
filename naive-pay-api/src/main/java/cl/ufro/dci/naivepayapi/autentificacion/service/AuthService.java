@@ -75,7 +75,7 @@ public class AuthService {
             // 2) Verificar si la cuenta está bloqueada
             if (accountLockService.isAccountLocked(user)) {
                 logger.warn("Login rechazado: cuenta bloqueada | userId={} | email={}",
-                    user.getUseId(), user.getRegister().getRegEmail());
+                        user.getUseId(), user.getRegister().getRegEmail());
                 logFailedAttempt(user, AuthAttemptReason.ACCOUNT_BLOCKED);
                 return forbidden(AuthAttemptReason.ACCOUNT_BLOCKED);
             }
@@ -83,6 +83,15 @@ public class AuthService {
             // 3) Verificar contraseña
             if (!isValidPassword(user, req.getPassword())) {
                 logger.warn("Login rechazado: credenciales inválidas | userId={}", user.getUseId());
+
+                // Si no tiene device, no podemos registrar el intento ni mostrar contador
+                // Simplemente retornamos error genérico de credenciales incorrectas
+                if (deviceService.findByUserId(user.getUseId()).isEmpty()) {
+                    logger.debug("Usuario sin device, retornando error genérico | userId={}", user.getUseId());
+                    return unauthorized(AuthAttemptReason.BAD_CREDENTIALS);
+                }
+
+                // Con device: registrar intento y mostrar contador
                 logFailedAttempt(user, AuthAttemptReason.BAD_CREDENTIALS);
 
                 // Verificar y bloquear cuenta si es necesario después de fallo
@@ -116,11 +125,11 @@ public class AuthService {
             try {
                 LoginResponse response = createAuthenticatedSession(user, deviceFingerprint);
                 logger.info("Login exitoso | userId={} | email={} | jti={}",
-                    user.getUseId(), user.getRegister().getRegEmail(), response.getJti());
+                        user.getUseId(), user.getRegister().getRegEmail(), response.getJti());
                 return ResponseEntity.ok(response);
             } catch (ResponseStatusException ex) {
                 logger.warn("Login rechazado: error de autorización de dispositivo | userId={} | reason={}",
-                    user.getUseId(), ex.getReason());
+                        user.getUseId(), ex.getReason());
                 return handleDeviceAuthorizationError(user, ex);
             }
         } finally {
@@ -237,11 +246,13 @@ public class AuthService {
         String reason = ex.getReason();
 
         if (AuthAttemptReason.DEVICE_REQUIRED.name().equals(reason)) {
-            logFailedAttempt(user, AuthAttemptReason.DEVICE_REQUIRED);
+            // No se registra el intento porque no hay dispositivo vinculado
+            // El usuario debe vincular un dispositivo primero
             return forbidden(AuthAttemptReason.DEVICE_REQUIRED);
         }
 
         if (AuthAttemptReason.DEVICE_UNAUTHORIZED.name().equals(reason)) {
+            // Registrar intento fallido con el dispositivo existente (viejo)
             logFailedAttempt(user, AuthAttemptReason.DEVICE_UNAUTHORIZED);
             return forbidden(AuthAttemptReason.DEVICE_UNAUTHORIZED);
         }
@@ -334,7 +345,7 @@ public class AuthService {
         int remaining = Math.max(0, maxFailedAttempts - (int) failedCount);
 
         logger.debug("Intentos restantes calculados | userId={} | failedCount={} | remaining={}",
-            user.getUseId(), failedCount, remaining);
+                user.getUseId(), failedCount, remaining);
 
         return remaining;
     }
@@ -343,12 +354,32 @@ public class AuthService {
 
     /** Construye respuesta 401 Unauthorized con el motivo del rechazo. */
     private static ResponseEntity<Map<String, Object>> unauthorized(AuthAttemptReason reason) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", reason.name()));
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                "error", reason.name(),
+                "message", getErrorMessage(reason)
+        ));
     }
 
     /** Construye respuesta 403 Forbidden con el motivo del rechazo. */
     private static ResponseEntity<Map<String, Object>> forbidden(AuthAttemptReason reason) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", reason.name()));
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "error", reason.name(),
+                "message", getErrorMessage(reason)
+        ));
+    }
+
+    /**
+     * Retorna un mensaje amigable para el usuario según el tipo de error.
+     */
+    private static String getErrorMessage(AuthAttemptReason reason) {
+        return switch (reason) {
+            case DEVICE_REQUIRED -> "No tienes un dispositivo vinculado a tu cuenta";
+            case DEVICE_UNAUTHORIZED -> "Este dispositivo no está autorizado para acceder a tu cuenta";
+            case BAD_CREDENTIALS -> "Credenciales incorrectas";
+            case ACCOUNT_BLOCKED -> "Tu cuenta ha sido bloqueada temporalmente por seguridad";
+            case USER_NOT_FOUND -> "Usuario no encontrado";
+            default -> "Error de autenticación";
+        };
     }
 
     /** Construye respuesta 401 Unauthorized genérica para errores de logout. */

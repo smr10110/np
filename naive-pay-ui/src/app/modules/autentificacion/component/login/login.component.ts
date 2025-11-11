@@ -92,13 +92,14 @@ export class LoginComponent implements OnInit {
 
                 // Manejo del contador de intentos
                 if (code === 'BAD_CREDENTIALS') {
-                    // Usar el valor del backend si está disponible, sino decrementar local
+                    // Solo mostrar contador si el backend lo envió (usuario con device)
                     if (backendRemainingAttempts !== undefined) {
                         this.remainingAttempts.set(backendRemainingAttempts);
+                        this.message.set(`CREDENCIALES INVALIDAS\nTe quedan ${backendRemainingAttempts} intentos`);
                     } else {
-                        this.remainingAttempts.update(attempts => attempts - 1);
+                        // Usuario sin device: mostrar mensaje genérico sin contador
+                        this.message.set('CREDENCIALES INVALIDAS');
                     }
-                    this.message.set(`CREDENCIALES INVALIDAS\nTe quedan ${this.remainingAttempts()} intentos`);
                 } else if (code === 'ACCOUNT_BLOCKED') {
                     this.remainingAttempts.set(0);
                     // Mostrar popup informativo (solo informar al usuario)

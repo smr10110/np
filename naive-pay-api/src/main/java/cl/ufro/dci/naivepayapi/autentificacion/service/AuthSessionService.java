@@ -36,7 +36,6 @@ public class AuthSessionService {
     public Session saveActiveSession(UUID jti, AuthAttempt initialAuthAttempt, Instant expiresAt) {
         Session auth = Session.builder()
                 .sesJti(jti)
-                .userId(initialAuthAttempt.getUserId())  // Campo desnormalizado
                 .initialAuthAttempt(initialAuthAttempt)
                 .sesCreated(Instant.now())
                 .sesExpires(expiresAt)
