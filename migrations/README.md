@@ -23,7 +23,9 @@ Al desvincular un dispositivo:
 
 ## ✅ Solución Implementada
 
-**Desnormalización estratégica:** Agregar campo `userId` directo en `Session` y `AuthAttempt`.
+**Desnormalización estratégica + ON DELETE SET NULL:**
+1. Agregar campo `userId` directo en `Session` y `AuthAttempt`
+2. Agregar constraint `ON DELETE SET NULL` en PostgreSQL para automatizar la limpieza
 
 ### Arquitectura mejorada:
 
@@ -50,23 +52,27 @@ AuthAttempt {
 - ✅ **Auditoría completa:** Historial de AuthAttempts preservado incluso sin Device
 - ✅ **Mejor rendimiento:** Queries directos sin JOINs innecesarios
 - ✅ **Simplicidad:** No se necesitan soft deletes ni complejidad adicional
-- ✅ **Resilencia:** Sin cascadas de NULLs al eliminar dispositivos
+- ✅ **Resiliencia:** Sin cascadas de NULLs al eliminar dispositivos
+- ✅ **Automatización:** PostgreSQL maneja ON DELETE SET NULL (sin código manual)
 
 ## 📋 Cambios Realizados
 
 ### 1. Entidades actualizadas:
 - ✅ `Session.java` - Campo `userId` agregado
-- ✅ `AuthAttempt.java` - Campo `userId` agregado
+- ✅ `AuthAttempt.java` - Campo `userId` agregado + constraint `ON DELETE SET NULL`
 
 ### 2. Servicios actualizados:
 - ✅ `AuthSessionService.saveActiveSession()` - Establece `userId` al crear sesión
 - ✅ `AuthAttemptService.log()` - Establece `userId` al crear intento
+- ✅ `DeviceService` - **Simplificado**: eliminado método `detachAuthAttemptsFromDevice`
 
 ### 3. Repositorios optimizados:
 - ✅ `AuthAttemptRepository` - Queries simplificados usando `userId` directo
+- ✅ `AuthAttemptRepository` - **Eliminado** método `detachAuthAttemptsFromDevice` (ya no necesario)
 
 ### 4. Migraciones SQL:
-- ✅ `add_user_id_to_session_and_auth_attempt.sql` - Script de migración completo
+- ✅ `add_user_id_to_session_and_auth_attempt.sql` - Script de migración para agregar campos userId
+- ✅ `add_on_delete_set_null_to_auth_attempt.sql` - Script para agregar constraint ON DELETE SET NULL
 
 ## 🚀 Cómo Aplicar la Migración
 
@@ -77,10 +83,10 @@ Si tu `application.properties` tiene:
 spring.jpa.hibernate.ddl-auto=update
 ```
 
-JPA creará las columnas automáticamente. **Luego ejecuta manualmente:**
+**Paso 1:** JPA creará las columnas automáticamente. **Luego ejecuta manualmente:**
 
 ```sql
--- Migrar datos existentes
+-- 1. Migrar datos existentes de userId
 UPDATE attempt_auth aa
 SET user_id = (
     SELECT d.useId FROM device d WHERE d.dev_fingerprint = aa.dev_fingerprint
@@ -97,11 +103,20 @@ SET user_id = (
 WHERE s.att_id_initial IS NOT NULL;
 ```
 
+**Paso 2:** Ejecuta el script para agregar ON DELETE SET NULL:
+```bash
+psql -U your_user -d naivepay < migrations/add_on_delete_set_null_to_auth_attempt.sql
+```
+
 ### Opción 2: Migración SQL Manual (Producción)
 
-Ejecuta el script completo:
+Ejecuta **ambos scripts** en orden:
 ```bash
+# 1. Agregar campos userId
 psql -U your_user -d naivepay < migrations/add_user_id_to_session_and_auth_attempt.sql
+
+# 2. Agregar ON DELETE SET NULL
+psql -U your_user -d naivepay < migrations/add_on_delete_set_null_to_auth_attempt.sql
 ```
 
 ## 🔍 Verificación Post-Migración

@@ -4,8 +4,6 @@ import cl.ufro.dci.naivepayapi.dispositivos.domain.Device;
 import cl.ufro.dci.naivepayapi.dispositivos.domain.DeviceLog;
 import cl.ufro.dci.naivepayapi.dispositivos.repository.DeviceLogRepository;
 import cl.ufro.dci.naivepayapi.dispositivos.repository.DeviceRepository;
-import cl.ufro.dci.naivepayapi.autentificacion.repository.SessionRepository;
-import cl.ufro.dci.naivepayapi.autentificacion.repository.AuthAttemptRepository;
 import cl.ufro.dci.naivepayapi.registro.domain.User;
 import cl.ufro.dci.naivepayapi.registro.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,8 +22,6 @@ public class DeviceService {
     private final DeviceRepository devRepo;
     private final DeviceLogRepository devLogRepo;
     private final UserRepository userRepo;
-    private final SessionRepository sessionRepo;
-    private final AuthAttemptRepository authAttemptRepo;
     private final PasswordEncoder passEncoderService;
 
     /**
@@ -109,7 +105,8 @@ public class DeviceService {
 
     /**
      * Replaces an existing device by removing it and creating a new one.
-     * All related logs and sessions are detached before deletion to preserve integrity.
+     * DeviceLogs are detached before deletion. AuthAttempts are automatically set to NULL
+     * by PostgreSQL ON DELETE SET NULL constraint (no manual detach needed).
      *
      * @param user           the associated user
      * @param oldDevice the device currently linked to the user
@@ -130,10 +127,7 @@ public class DeviceService {
 
         devLogRepo.detachDeviceFromLogs(oldDevice);
 
-        // Desacoplar todos los AuthAttempts antes de eliminar el Device
-        // para evitar violaciones de integridad referencial
-        authAttemptRepo.detachAuthAttemptsFromDevice(oldDevice.getFingerprint());
-
+        // PostgreSQL ON DELETE SET NULL manejará automáticamente los AuthAttempts
         devRepo.delete(oldDevice);
         devRepo.flush();
 
@@ -223,9 +217,9 @@ public class DeviceService {
 
     /**
      * Unlinks and deletes the device associated with a user.
-     * <p>
-     * Before deletion, all log and session references are detached
-     * and an "Unlink" action is recorded.
+     * DeviceLogs are detached before deletion. AuthAttempts are automatically set to NULL
+     * by PostgreSQL ON DELETE SET NULL constraint (no manual detach needed).
+     * An "Unlink" action is recorded in the logs.
      *
      * @param userId ID of the user whose device should be unlinked
      */
@@ -239,10 +233,7 @@ public class DeviceService {
 
             devLogRepo.detachDeviceFromLogs(device);
 
-            // Desacoplar todos los AuthAttempts antes de eliminar el Device
-            // para evitar violaciones de integridad referencial
-            authAttemptRepo.detachAuthAttemptsFromDevice(device.getFingerprint());
-
+            // PostgreSQL ON DELETE SET NULL manejará automáticamente los AuthAttempts
             devRepo.delete(device);
             devRepo.flush();
         });

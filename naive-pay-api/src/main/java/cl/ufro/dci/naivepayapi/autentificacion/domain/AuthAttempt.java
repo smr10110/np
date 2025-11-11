@@ -31,8 +31,16 @@ public class AuthAttempt {
 
     // Relación al Device que realizó el intento
     // Optional = true para permitir conservar intentos históricos si el Device se elimina
+    // ON DELETE SET NULL: La DB automáticamente pone device=NULL cuando se elimina el Device
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "dev_fingerprint", referencedColumnName = "dev_fingerprint")
+    @JoinColumn(
+        name = "dev_fingerprint",
+        referencedColumnName = "dev_fingerprint",
+        foreignKey = @ForeignKey(
+            name = "fk_attempt_device",
+            foreignKeyDefinition = "FOREIGN KEY (dev_fingerprint) REFERENCES device(dev_fingerprint) ON DELETE SET NULL"
+        )
+    )
     private Device device;
 
     @Column(name = "att_success", nullable = false)
