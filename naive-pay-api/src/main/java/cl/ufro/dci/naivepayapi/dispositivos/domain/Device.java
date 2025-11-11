@@ -37,7 +37,7 @@ public class Device {
      */
     @OneToOne(optional = false)
     @JoinColumn(
-            name = "useId",
+            name = "use_id",
             foreignKey = @ForeignKey(name = "fk_dev_user"))
     private User user;
 
