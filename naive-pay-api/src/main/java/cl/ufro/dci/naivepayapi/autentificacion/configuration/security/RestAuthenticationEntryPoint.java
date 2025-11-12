@@ -20,12 +20,5 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
                          HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setCharacterEncoding("UTF-8");
-        response.setContentType("application/json");
-        response.setHeader(
-                "WWW-Authenticate",
-                "Bearer error=\"invalid_token\", error_description=\"Authentication required\""
-        );
-        response.getWriter().write("{\"error\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}");
     }
 }

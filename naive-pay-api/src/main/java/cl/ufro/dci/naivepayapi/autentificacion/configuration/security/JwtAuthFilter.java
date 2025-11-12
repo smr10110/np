@@ -87,7 +87,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
 
             if (authSessionService.findActiveByJti(jti).isEmpty()) {
-                write401(response, "TOKEN_CLOSED", "Sesión cerrada");
+                SecurityContextHolder.clearContext();
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
 
@@ -111,12 +112,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 authSessionService.closeByJti(jti);
             } catch (Exception ignored) {
             }
-            write401(response, "TOKEN_EXPIRED", "El token ha expirado");
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
 
         } catch (JwtException ex) {
             SecurityContextHolder.clearContext();
-            write401(response, "TOKEN_INVALID", "Token inválido o mal formado");
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         }
     }
 
@@ -124,20 +125,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private boolean isPublic(String uri) {
         for (String pattern : PUBLIC_PATHS) {
             if (PATH_MATCHER.match(pattern, uri)) {
-                System.out.println("Ruta pública detectada: " + uri);
                 return true;
             }
         }
         return false;
-    }
-
-
-    private void write401(HttpServletResponse response, String code, String msg) throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setCharacterEncoding("UTF-8");
-        response.setContentType("application/json");
-        response.setHeader("WWW-Authenticate",
-                "Bearer error=\"invalid_token\", error_description=\"" + msg + "\"");
-        response.getWriter().write("{\"error\":\"" + code + "\",\"message\":\"" + msg + "\"}");
     }
 }
