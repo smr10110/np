@@ -76,6 +76,32 @@ public class AccountLockService {
     }
 
     /**
+     * Calculates the number of login attempts remaining before account lockout.
+     * The counter resets after a successful login or after the lockout window expires.
+     *
+     * @param user User for whom to calculate remaining attempts
+     * @return Number of attempts remaining (0 to maxFailedAttempts)
+     */
+    public int calculateRemainingAttempts(User user) {
+        // Calculate window start: either last successful login or lockoutWindowMinutes ago
+        Instant windowStart = Instant.now().minus(lockoutWindowMinutes, ChronoUnit.MINUTES);
+        Instant lastSuccess = authAttemptRepository.findLastSuccessAt(user.getUseId());
+
+        // Reset counter from last successful login (or lockout window, whichever is more recent)
+        Instant since = (lastSuccess != null && lastSuccess.isAfter(windowStart))
+                ? lastSuccess
+                : windowStart;
+
+        long failedCount = authAttemptRepository.countFailedAttemptsSince(user.getUseId(), since);
+        int remaining = Math.max(0, maxFailedAttempts - (int) failedCount);
+
+        logger.debug("Remaining attempts calculated | userId={} | failedCount={} | remaining={}",
+                user.getUseId(), failedCount, remaining);
+
+        return remaining;
+    }
+
+    /**
      * Verifica intentos fallidos recientes y bloquea la cuenta si es necesario.
      *
      * <p>Este metodo implementa la política de bloqueo automático siguiendo estos pasos:
