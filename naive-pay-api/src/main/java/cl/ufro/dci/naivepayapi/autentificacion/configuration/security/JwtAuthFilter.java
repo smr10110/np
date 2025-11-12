@@ -3,6 +3,7 @@ package cl.ufro.dci.naivepayapi.autentificacion.configuration.security;
 
 import cl.ufro.dci.naivepayapi.autentificacion.service.AuthSessionService;
 import cl.ufro.dci.naivepayapi.autentificacion.service.JWTService;
+import cl.ufro.dci.naivepayapi.dispositivos.service.DeviceService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -30,6 +31,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private static final String AUTH_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String DEVICE_FINGERPRINT_HEADER = "X-Device-Fingerprint";
 
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
@@ -47,11 +49,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JWTService jwtService;
     private final AuthSessionService authSessionService;
+    private final DeviceService deviceService;
 
 
-    public JwtAuthFilter(JWTService jwtService, AuthSessionService authSessionService) {
+    public JwtAuthFilter(JWTService jwtService, AuthSessionService authSessionService, DeviceService deviceService) {
         this.jwtService = jwtService;
         this.authSessionService = authSessionService;
+        this.deviceService = deviceService;
     }
 
 
@@ -89,6 +93,21 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (authSessionService.findActiveByJti(jti).isEmpty()) {
                 write401(response, "TOKEN_CLOSED", "Sesión cerrada");
                 return;
+            }
+
+            // Validar que el dispositivo coincida (excepto para logout)
+            if (!uri.equals("/auth/logout")) {
+                final String fingerprintFromRequest = request.getHeader(DEVICE_FINGERPRINT_HEADER);
+                final Long userId = Long.valueOf(claims.getSubject());
+
+                // Validar que el fingerprint de la petición coincida con el del usuario
+                try {
+                    deviceService.ensureAuthorizedDevice(userId, fingerprintFromRequest);
+                } catch (Exception ex) {
+                    SecurityContextHolder.clearContext();
+                    write401(response, "DEVICE_UNAUTHORIZED", "Dispositivo no autorizado para esta sesión");
+                    return;
+                }
             }
 
 

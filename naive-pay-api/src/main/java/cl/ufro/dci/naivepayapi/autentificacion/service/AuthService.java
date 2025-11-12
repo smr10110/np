@@ -9,6 +9,7 @@ import cl.ufro.dci.naivepayapi.registro.repository.UserRepository;
 import cl.ufro.dci.naivepayapi.dispositivos.service.DeviceService;
 import cl.ufro.dci.naivepayapi.dispositivos.domain.Device;
 import io.jsonwebtoken.JwtException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +48,7 @@ public class AuthService {
     private final AccountLockService accountLockService;
 
     // =========================== LOGIN ===========================
+    @Transactional
     public ResponseEntity<?> login(LoginRequest req, String deviceFingerprint) {
         MDC.put("identifier", req.getIdentifier());
         MDC.put("deviceFingerprint", deviceFingerprint != null ? deviceFingerprint : "N/A");
@@ -57,7 +59,8 @@ public class AuthService {
             // Validación mínima de entrada
             if (isBlank(req.getIdentifier()) || isBlank(req.getPassword())) {
                 logger.warn("Login rechazado: credenciales incompletas");
-                return unauthorized(AuthAttemptReason.BAD_CREDENTIALS);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", AuthAttemptReason.BAD_CREDENTIALS.name()));
             }
 
             // 1) Resolver usuario por email o RUT
@@ -65,7 +68,8 @@ public class AuthService {
             if (userOpt.isEmpty()) {
                 logger.warn("Login rechazado: usuario no encontrado | identifier={}", req.getIdentifier());
                 // No podemos registrar el intento porque no hay user ni device
-                return unauthorized(AuthAttemptReason.USER_NOT_FOUND);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", AuthAttemptReason.USER_NOT_FOUND.name()));
             }
             User user = userOpt.get();
 
@@ -77,7 +81,8 @@ public class AuthService {
                 logger.warn("Login rechazado: cuenta bloqueada | userId={} | email={}",
                         user.getUseId(), user.getRegister().getRegEmail());
                 logFailedAttempt(user, AuthAttemptReason.ACCOUNT_BLOCKED);
-                return forbidden(AuthAttemptReason.ACCOUNT_BLOCKED);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", AuthAttemptReason.ACCOUNT_BLOCKED.name()));
             }
 
             // 3) Verificar contraseña
@@ -88,7 +93,8 @@ public class AuthService {
                 // Simplemente retornamos error genérico de credenciales incorrectas
                 if (deviceService.findByUserId(user.getUseId()).isEmpty()) {
                     logger.debug("Usuario sin device, retornando error genérico | userId={}", user.getUseId());
-                    return unauthorized(AuthAttemptReason.BAD_CREDENTIALS);
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(Map.of("error", AuthAttemptReason.BAD_CREDENTIALS.name()));
                 }
 
                 // Con device: registrar intento y mostrar contador
@@ -100,7 +106,8 @@ public class AuthService {
                 // Si ya quedó bloqueada, responder 403 inmediatamente
                 if (wasBlocked) {
                     logger.warn("Cuenta bloqueada automáticamente tras intento fallido | userId={}", user.getUseId());
-                    return forbidden(AuthAttemptReason.ACCOUNT_BLOCKED);
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", AuthAttemptReason.ACCOUNT_BLOCKED.name()));
                 }
 
                 // Calcular intentos restantes
@@ -111,7 +118,8 @@ public class AuthService {
                     logger.warn("Bloqueando cuenta: intentos agotados | userId={}", user.getUseId());
                     accountLockService.blockAccount(user);
                     logFailedAttempt(user, AuthAttemptReason.ACCOUNT_BLOCKED);
-                    return forbidden(AuthAttemptReason.ACCOUNT_BLOCKED);
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", AuthAttemptReason.ACCOUNT_BLOCKED.name()));
                 }
 
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -183,7 +191,6 @@ public class AuthService {
 
     /**
      * Crea una sesión autenticada completa: genera token JWT, valida dispositivo y persiste sesión.
-     * Sigue la cadena: Session -> AuthAttempt -> Device -> User
      *
      * @param user Usuario autenticado
      * @param deviceFingerprint Fingerprint del dispositivo
@@ -248,13 +255,14 @@ public class AuthService {
         if (AuthAttemptReason.DEVICE_REQUIRED.name().equals(reason)) {
             // No se registra el intento porque no hay dispositivo vinculado
             // El usuario debe vincular un dispositivo primero
-            return forbidden(AuthAttemptReason.DEVICE_REQUIRED);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", AuthAttemptReason.DEVICE_REQUIRED.name()));
         }
 
         if (AuthAttemptReason.DEVICE_UNAUTHORIZED.name().equals(reason)) {
-            // Registrar intento fallido con el dispositivo existente (viejo)
             logFailedAttempt(user, AuthAttemptReason.DEVICE_UNAUTHORIZED);
-            return forbidden(AuthAttemptReason.DEVICE_UNAUTHORIZED);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", AuthAttemptReason.DEVICE_UNAUTHORIZED.name()));
         }
 
         throw ex;
@@ -351,36 +359,6 @@ public class AuthService {
     }
 
     // ----------------- Helpers - Response Builders -----------------
-
-    /** Construye respuesta 401 Unauthorized con el motivo del rechazo. */
-    private static ResponseEntity<Map<String, Object>> unauthorized(AuthAttemptReason reason) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-                "error", reason.name(),
-                "message", getErrorMessage(reason)
-        ));
-    }
-
-    /** Construye respuesta 403 Forbidden con el motivo del rechazo. */
-    private static ResponseEntity<Map<String, Object>> forbidden(AuthAttemptReason reason) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                "error", reason.name(),
-                "message", getErrorMessage(reason)
-        ));
-    }
-
-    /**
-     * Retorna un mensaje amigable para el usuario según el tipo de error.
-     */
-    private static String getErrorMessage(AuthAttemptReason reason) {
-        return switch (reason) {
-            case DEVICE_REQUIRED -> "No tienes un dispositivo vinculado a tu cuenta";
-            case DEVICE_UNAUTHORIZED -> "Este dispositivo no está autorizado para acceder a tu cuenta";
-            case BAD_CREDENTIALS -> "Credenciales incorrectas";
-            case ACCOUNT_BLOCKED -> "Tu cuenta ha sido bloqueada temporalmente por seguridad";
-            case USER_NOT_FOUND -> "Usuario no encontrado";
-            default -> "Error de autenticación";
-        };
-    }
 
     /** Construye respuesta 401 Unauthorized genérica para errores de logout. */
     private static ResponseEntity<Map<String, Object>> unauthorizedLogout() {

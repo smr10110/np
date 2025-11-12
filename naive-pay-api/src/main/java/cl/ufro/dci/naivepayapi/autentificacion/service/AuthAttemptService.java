@@ -1,7 +1,6 @@
 package cl.ufro.dci.naivepayapi.autentificacion.service;
 
 import cl.ufro.dci.naivepayapi.autentificacion.domain.AuthAttempt;
-import cl.ufro.dci.naivepayapi.autentificacion.domain.Session;
 import cl.ufro.dci.naivepayapi.autentificacion.domain.enums.AuthAttemptReason;
 import cl.ufro.dci.naivepayapi.dispositivos.domain.Device;
 import cl.ufro.dci.naivepayapi.autentificacion.repository.AuthAttemptRepository;
@@ -11,8 +10,7 @@ import java.time.Instant;
 
 /**
  * Service for managing authentication attempts
- * Follows the chain: Session -> AuthAttempt -> Device -> User
- */
+ * */
 @Service
 public class AuthAttemptService {
     private final AuthAttemptRepository repo;
@@ -37,7 +35,6 @@ public class AuthAttemptService {
 
     /**
      * Cuenta los intentos fallidos de un usuario desde una fecha específica.
-     * Navega a través de: AuthAttempt -> Device -> User
      *
      * @param userId ID del usuario
      * @param since Fecha desde la cual contar los intentos
@@ -47,10 +44,7 @@ public class AuthAttemptService {
         return repo.countFailedAttemptsSince(userId, since);
     }
 
-    /**
-     * Expone la última fecha/hora de intento exitoso para que AuthService pueda reiniciar el contador tras un login correcto.
-     * Navega a través de: AuthAttempt -> Device -> User
-     */
+    // exponer la última fecha/hora de intento exitoso para que AuthService pueda reiniciar el contador tras un login correcto.
     public Instant findLastSuccessAt(Long userId) {
         return repo.findLastSuccessAt(userId);
     }

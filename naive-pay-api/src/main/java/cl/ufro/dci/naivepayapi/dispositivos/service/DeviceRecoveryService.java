@@ -229,7 +229,6 @@ public class DeviceRecoveryService {
 
     /**
      * Generates a JWT token for the verified user and device, and stores an active session.
-     * Follows the chain: Session -> AuthAttempt -> Device -> User
      *
      * @param user        the verified user
      * @param savedDevice the verified device
@@ -244,10 +243,10 @@ public class DeviceRecoveryService {
         String token = jwtService.generate(String.valueOf(user.getUseId()), fingerprint, jti.toString());
         Instant exp = jwtService.getExpiration(token);
 
-        // 1. Crear AuthAttempt exitoso para device recovery
+        // 1. Create successful AuthAttempt for device recovery
         var initialAuthAttempt = authAttemptService.log(savedDevice, true, AuthAttemptReason.OK);
 
-        // 2. Crear Session con el AuthAttempt
+        // 2. Create Session with the AuthAttempt
         var session = authSessionService.saveActiveSession(jti, initialAuthAttempt, exp);
 
         return new LoginResponse(token, exp.toString(), session.getSesId().toString());

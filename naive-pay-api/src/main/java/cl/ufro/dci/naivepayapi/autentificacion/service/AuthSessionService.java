@@ -14,7 +14,6 @@ import java.util.UUID;
 /**
  * Servicio encargado de persistir y administrar las sesiones de autenticación
  * asociadas a tokens JWT emitidos por el sistema.
- * Follows the chain: Session -> AuthAttempt -> Device -> User
  */
 @Service
 public class AuthSessionService {

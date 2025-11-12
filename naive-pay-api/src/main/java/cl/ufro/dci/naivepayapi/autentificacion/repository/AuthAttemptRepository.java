@@ -14,7 +14,6 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Long> 
     /**
      * Obtiene los últimos N intentos de autenticación de un usuario
      * ordenados por fecha descendente (más reciente primero).
-     * Navega la cadena: AuthAttempt -> Device -> User
      *
      * @param userId ID del usuario
      * @param pageable Paginación (usar PageRequest.of(0, 5) para obtener últimos 5)
@@ -34,7 +33,6 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Long> 
 
     /**
      * Cuenta los intentos fallidos de un usuario desde una fecha específica.
-     * Navega la cadena: AuthAttempt -> Device -> User
      *
      * @param userId ID del usuario
      * @param since Fecha desde la cual contar (ej: hace 30 minutos)
@@ -53,10 +51,7 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Long> 
         @Param("since") Instant since
     );
 
-    /**
-     * Obtiene la fecha/hora del último intento EXITOSO para poder reiniciar contador.
-     * Navega la cadena: AuthAttempt -> Device -> User
-     */
+  // obtener la fecha/hora del último intento EXITOSO para poder reinicar contador
     @Query("""
         SELECT MAX(a.attOccurred) FROM AuthAttempt a
         JOIN a.device d

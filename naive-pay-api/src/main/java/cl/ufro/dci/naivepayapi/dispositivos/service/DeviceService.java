@@ -105,8 +105,6 @@ public class DeviceService {
 
     /**
      * Replaces an existing device by removing it and creating a new one.
-     * DeviceLogs are detached before deletion. AuthAttempts are automatically set to NULL
-     * by PostgreSQL ON DELETE SET NULL constraint (no manual detach needed).
      *
      * @param user           the associated user
      * @param oldDevice the device currently linked to the user
@@ -127,7 +125,6 @@ public class DeviceService {
 
         devLogRepo.detachDeviceFromLogs(oldDevice);
 
-        // PostgreSQL ON DELETE SET NULL manejará automáticamente los AuthAttempts
         devRepo.delete(oldDevice);
         devRepo.flush();
 
@@ -217,9 +214,9 @@ public class DeviceService {
 
     /**
      * Unlinks and deletes the device associated with a user.
-     * DeviceLogs are detached before deletion. AuthAttempts are automatically set to NULL
-     * by PostgreSQL ON DELETE SET NULL constraint (no manual detach needed).
-     * An "Unlink" action is recorded in the logs.
+     * <p>
+     * Before deletion, all log references are detached
+     * and an "Unlink" action is recorded.
      *
      * @param userId ID of the user whose device should be unlinked
      */
@@ -233,7 +230,6 @@ public class DeviceService {
 
             devLogRepo.detachDeviceFromLogs(device);
 
-            // PostgreSQL ON DELETE SET NULL manejará automáticamente los AuthAttempts
             devRepo.delete(device);
             devRepo.flush();
         });

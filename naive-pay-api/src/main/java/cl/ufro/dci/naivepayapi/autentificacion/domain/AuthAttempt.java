@@ -22,7 +22,6 @@ public class AuthAttempt {
 
     // Relación al Device que realizó el intento
     // ON DELETE CASCADE: Cuando se elimina el Device, se eliminan automáticamente todos sus AuthAttempts
-    // Esto mantiene la normalización: no duplicamos userId aquí, lo obtenemos de device.user.useId
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
         name = "dev_fingerprint",
