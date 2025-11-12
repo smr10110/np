@@ -1,0 +1,183 @@
+/* Contenedor tipo “card” */
+.validationProcess {
+    background-color: #ffffff; /* Fondo blanco */
+    border-radius: 0.75rem; /* Rounded-lg */
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); /* shadow-lg */
+    padding: 1.5rem; /* p-6 */
+    margin: 2rem auto; /* centrado con espacio arriba y abajo */
+    max-width: 1000px; /* ancho máximo para no ocupar toda la pantalla */
+    overflow-x: auto; /* para que la tabla sea scrollable en móviles */
+}
+
+/* Títulos */
+/* Se aplica a: Solicitudes de Validación, Comercios Rechazados, Comercios Expirados */
+#validationTitle, #rejectedTitle {
+    color: #374151;
+    font-weight: bold;
+    font-size: 1.25rem; /* text-xl */
+    text-align: center;
+}
+
+/* Tabla general (clase usada en las tres tablas) */
+.validationTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem; /* text-sm */
+    table-layout: fixed; /* CRUCIAL para respetar las anchuras % */
+}
+
+/* Encabezado */
+.validationTable thead {
+    background-color: #f9fafb; /* Tailwind gray-50 */
+}
+
+.validationTable th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: #374151; /* Tailwind gray-700 */
+    border-bottom: 2px solid #e5e7eb; /* Tailwind gray-200 */
+    /* Truncamiento de texto para columnas */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Cuerpo y celdas */
+.validationTable tbody tr {
+    transition: background-color 0.2s;
+}
+.validationTable tbody tr:nth-child(even) {
+    background-color: #f3f4f6;
+}
+.validationTable tbody tr:hover {
+    background-color: #e5e7eb;
+}
+.validationTable td {
+    padding: 0.75rem 1rem;
+    color: #111827;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
+    /* Truncamiento de texto para celdas */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Botones dentro de la tabla */
+.validationTable td app-button {
+    margin-right: 0.5rem;
+    display: inline-block;
+}
+
+
+/* ---------------------------------------------------------------------- */
+/* AJUSTE DE ANCHURAS PARA 5 COLUMNAS (TABLA PENDIENTES) */
+/* ---------------------------------------------------------------------- */
+
+/* Usamos :first-of-type para apuntar a la tabla de Solicitudes de Validación */
+.validationProcess:first-of-type .validationTable th:nth-child(1),
+.validationProcess:first-of-type .validationTable td:nth-child(1) {
+    width: 8%; /* ID (Chico) */
+    text-align: center;
+}
+.validationProcess:first-of-type .validationTable th:nth-child(2),
+.validationProcess:first-of-type .validationTable td:nth-child(2) {
+    width: 30%; /* Commerce (Grande) */
+}
+.validationProcess:first-of-type .validationTable th:nth-child(3),
+.validationProcess:first-of-type .validationTable td:nth-child(3) {
+    width: 20%; /* Tax Identifier */
+}
+.validationProcess:first-of-type .validationTable th:nth-child(4),
+.validationProcess:first-of-type .validationTable td:nth-child(4) {
+    width: 20%; /* Categories (Botón) */
+    text-align: center;
+}
+.validationProcess:first-of-type .validationTable th:nth-child(5),
+.validationProcess:first-of-type .validationTable td:nth-child(5) {
+    width: 22%; /* Action (2 Botones) */
+    text-align: center;
+}
+/* Alineación de encabezados Action/Categories */
+.validationProcess:first-of-type .validationTable th:nth-child(4),
+.validationProcess:first-of-type .validationTable th:nth-child(5) {
+    text-align: center;
+}
+
+
+/* ---------------------------------------------------------------------- */
+/* AJUSTE DE ANCHURAS PARA 4 COLUMNAS (TABLAS RECHAZADOS Y EXPIRADOS) */
+/* ---------------------------------------------------------------------- */
+
+/* Se aplica a la segunda y tercera instancia de .validationProcess */
+/* Estas tablas son identificadas por la posición de su contenedor dentro del componente */
+.validationTable th:nth-child(1) { width: 10%; text-align: center; } /* ID */
+.validationTable th:nth-child(2) { width: 35%; } /* Commerce */
+.validationTable th:nth-child(3) { width: 25%; } /* Tax Identifier */
+.validationTable th:nth-child(4) { width: 30%; text-align: center; } /* Status */
+
+/* Aplicar la misma distribución a las celdas de las tablas de 4 columnas */
+.validationProcess:not(:first-of-type) .validationTable td:nth-child(1) { width: 10%; text-align: center; }
+.validationProcess:not(:first-of-type) .validationTable td:nth-child(2) { width: 35%; }
+.validationProcess:not(:first-of-type) .validationTable td:nth-child(3) { width: 25%; }
+.validationProcess:not(:first-of-type) .validationTable td:nth-child(4) { width: 30%; text-align: center; }
+
+
+/* Estilo específico para el estado Rejected (Rechazado) */
+.statusRejected {
+    color: white;
+    font-weight: 600;
+    background-color: #dc2626; /* Rojo */
+    padding: 0.5rem 0.75rem;
+    text-align: center;
+    border-radius: 0.375rem;
+    display: inline-block;
+    line-height: 1;
+}
+
+/* Estilo específico para el estado Expired (Expirado) */
+.statusExpired {
+    color: #92400e; /* Marrón oscuro */
+    font-weight: 600;
+    background-color: #fcd34d; /* Amarillo/Naranja tenue */
+    padding: 0.5rem 0.75rem;
+    text-align: center;
+    border-radius: 0.375rem;
+    display: inline-block;
+    line-height: 1;
+}
+
+.statusApproved {
+    color: white;
+    font-weight: 600;
+    background-color: #37af14;
+    padding: 0.5rem 0.75rem;
+    text-align: center;
+    border-radius: 0.375rem;
+    display: inline-block;
+    line-height: 1;
+}
+
+
+/* Ajuste responsive para móviles */
+@media (max-width: 640px) {
+    .validationTable thead {
+        display: none;
+    }
+    .validationTable tbody tr {
+        display: block;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid #e5e7eb;
+        padding: 0.5rem;
+    }
+    .validationTable td {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+    }
+}

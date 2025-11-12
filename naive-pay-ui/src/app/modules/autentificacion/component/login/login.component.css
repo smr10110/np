@@ -1,0 +1,50 @@
+/* Utilidades base para mantener cohesión si no usas Tailwind */
+:host { display:block;
+    --color-border: #cccccc;}
+
+.input {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    border-radius: .5rem;
+    padding: .70rem .875rem;
+    outline: none;
+}
+.input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+
+.label {
+    display: block;
+    font-size: .875rem;
+    margin-bottom: .375rem;
+    color: #374151;
+}
+
+.btn-primary {
+    background: #4f46e5;
+    color: #fff;
+    padding: .70rem 1rem;
+    border-radius: .5rem;
+    border: 1px solid transparent;
+}
+.btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+.btn-primary:hover:not(:disabled) { background: #4338ca; }
+
+.btn-secondary {
+    background: #f3f4f6;
+    color: #111827;
+    padding: .60rem .875rem;
+    border-radius: .5rem;
+}
+.btn-secondary:hover { background: #e5e7eb; }
+
+.btn-oauth {
+    background: #f3f4f6;
+    padding: .70rem 1rem;
+    border-radius: .5rem;
+    width: 100%;
+    text-align: center;
+}
+.btn-oauth:hover { background: #e5e7eb; }
+
+/* tono del panel derecho (si usas tailwind, ya lo tienes) */
+.bg-brand-950 { background: #0b1220; }
