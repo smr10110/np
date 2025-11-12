@@ -1,6 +1,5 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AutentificacionService } from '../../../../modules/autentificacion/service/autentificacion.service';
 
 @Component({
   selector: 'app-session-timer',
@@ -26,8 +25,6 @@ import { AutentificacionService } from '../../../../modules/autentificacion/serv
   `
 })
 export class SessionTimerComponent implements OnInit, OnDestroy {
-  private authService = inject(AutentificacionService);
-
   timeLeft = '10:00';
   private interval: any = null;
   private expirationTime: number | null = null;
@@ -82,7 +79,12 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
 
     if (remainingMs <= 0) {
       this.timeLeft = '00:00';
-      this.handleSessionExpired();
+      // Detener el interval cuando llegue a 0
+      // El logout lo maneja automáticamente AutentificacionService
+      if (this.interval) {
+        clearInterval(this.interval);
+        this.interval = null;
+      }
       return;
     }
 
@@ -92,15 +94,5 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
     const seconds = totalSeconds % 60;
 
     this.timeLeft = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  }
-
-  private handleSessionExpired(): void {
-    if (this.interval) {
-      clearInterval(this.interval);
-      this.interval = null;
-    }
-
-    // Cerrar sesión cuando el tiempo llegue a 0
-    this.authService.logout().subscribe();
   }
 }
