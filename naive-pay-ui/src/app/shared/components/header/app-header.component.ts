@@ -5,6 +5,7 @@ import { RouterModule } from '@angular/router';
 import { ThemeToggleButtonComponent } from '../common/theme-toggle/theme-toggle-button.component';
 import { NotificationDropdownComponent } from './notification-dropdown/notification-dropdown.component';
 import { UserDropdownComponent } from './user-dropdown/user-dropdown.component';
+import { SessionTimerComponent } from './session-timer/session-timer.component';
 
 @Component({
   selector: 'app-header',
@@ -14,6 +15,7 @@ import { UserDropdownComponent } from './user-dropdown/user-dropdown.component';
     ThemeToggleButtonComponent,
     NotificationDropdownComponent,
     UserDropdownComponent,
+    SessionTimerComponent,
   ],
   templateUrl: './app-header.component.html',
 })
