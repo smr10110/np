@@ -23,6 +23,10 @@ public class User {
 	private AccountState useState;
 	private String useAdress;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "use_role", nullable = false, length = 20)
+    private UserRole useRole = UserRole.USER;
+
 
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "credencial_id", referencedColumnName = "creId")
