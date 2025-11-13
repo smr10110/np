@@ -57,9 +57,7 @@ public enum UserRole {
 @Column(name = "use_role", nullable = false, length = 20)
 private UserRole useRole = UserRole.USER;
 
-// Getter y Setter
-public UserRole getUseRole() { return useRole; }
-public void setUseRole(UserRole useRole) { this.useRole = useRole; }
+// No agregar getters/setters - Lombok @Data los genera automáticamente
 ```
 
 ### 3. Modificar `JWTService.java` - Agregar claim
