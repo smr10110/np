@@ -232,7 +232,8 @@ public class AuthService {
         return new LoginResponse(
                 token,
                 exp.toString(),
-                session.getSesId().toString()
+                session.getSesId().toString(),
+                user.getUseRole().name() // Incluir rol del usuario (USER o ADMIN)
         );
     }
 

@@ -12,4 +12,5 @@ public class LoginResponse {
     private String accessToken;
     private String expiresAt;
     private String jti;
+    private String role; // Rol del usuario (USER o ADMIN)
 }
