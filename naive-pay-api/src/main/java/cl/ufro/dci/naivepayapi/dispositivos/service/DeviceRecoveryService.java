@@ -240,7 +240,7 @@ public class DeviceRecoveryService {
                                                      String fingerprint) {
 
         UUID jti = UUID.randomUUID();
-        String token = jwtService.generate(String.valueOf(user.getUseId()), fingerprint, jti.toString());
+        String token = jwtService.generate(String.valueOf(user.getUseId()), fingerprint, jti.toString(), user.getUseRole().name());
         Instant exp = jwtService.getExpiration(token);
 
         // 1. Create successful AuthAttempt for device recovery

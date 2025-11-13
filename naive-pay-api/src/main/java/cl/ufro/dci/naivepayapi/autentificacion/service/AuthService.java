@@ -205,7 +205,8 @@ public class AuthService {
         String token = jwtService.generate(
                 String.valueOf(user.getUseId()),
                 safeFingerprint,
-                jti.toString()
+                jti.toString(),
+                user.getUseRole().name() // Agregar rol del usuario (USER o ADMIN)
         );
         Instant exp = jwtService.getExpiration(token);
 

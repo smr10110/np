@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './modules/autentificacion/guards/auth.guard';
 import { authEntryGuard } from './modules/autentificacion/guards/auth-entry.guard';
+import { adminGuard } from './modules/autentificacion/guards/admin.guard';
 
 export const routes: Routes = [
     {
@@ -66,6 +67,7 @@ export const routes: Routes = [
             },
             {
                 path: 'validatecommerce',
+                canActivate: [adminGuard], // Solo admins pueden acceder a validación de comercios
                 loadComponent: () => import('./modules/comercio/component/validation-process/validation-process.component').then(m => m.ValidationProcessComponent),
                 title: 'Validar Comercio | Naive-Pay',
             },

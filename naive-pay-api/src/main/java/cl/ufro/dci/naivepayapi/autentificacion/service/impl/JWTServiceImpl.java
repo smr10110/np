@@ -28,12 +28,13 @@ public class JWTServiceImpl implements JWTService {
     }
 
     @Override
-    public String generate(String userId, String deviceFingerprint, String jti) {
+    public String generate(String userId, String deviceFingerprint, String jti, String role) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .id(jti)                               // jti
                 .subject(userId)
                 .claim("deviceFingerprint", deviceFingerprint) //  <------------------ Devices Cambio
+                .claim("role", role)                   // <------------------ Rol de usuario (USER o ADMIN)
                 .issuedAt(Date.from(now))              // iat
                 .expiration(Date.from(now.plus(ttlMinutes, ChronoUnit.MINUTES))) // exp
                 .signWith(key())
@@ -77,4 +78,5 @@ public class JWTServiceImpl implements JWTService {
     @Override public String  getJti(String token)          { return parse(token).getId(); }
     @Override public Instant getExpiration(String token)   { return parse(token).getExpiration().toInstant(); }
     @Override public String getDeviceFingerprint(String token) { return parse(token).get("deviceFingerprint", String.class); } //  <------------------ Devices Cambio
+    @Override public String getRole(String token)         { return parse(token).get("role", String.class); } //  <------------------ Rol de usuario
 }

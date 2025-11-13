@@ -16,6 +16,7 @@ export interface LoginResponse {
   accessToken: string;
   expiresAt: string;
   jti: string;
+  role: 'USER' | 'ADMIN'; // Rol del usuario (USER o ADMIN)
 }
 
 export interface ForgotPasswordRequest {
@@ -96,9 +97,10 @@ export class AutentificacionService implements OnDestroy {
     }
   }
 
-  // Limpia la sesión local eliminando token y cancelando todos los timers
+  // Limpia la sesión local eliminando token, rol y cancelando todos los timers
   clear(): void {
     sessionStorage.removeItem('token');
+    sessionStorage.removeItem('userRole');
     this.cleanupTimers();
   }
 
@@ -118,12 +120,13 @@ export class AutentificacionService implements OnDestroy {
 
   // ======================== Auth APIs ========================
 
-  // Autentica usuario con email/RUT y contraseña, guarda token y programa auto-logout
+  // Autentica usuario con email/RUT y contraseña, guarda token, rol y programa auto-logout
   login(req: LoginRequest): Observable<LoginResponse> {
     const headers = new HttpHeaders().set('X-Device-Fingerprint', this.deviceFp.get());
     return this.http.post<LoginResponse>(`${this.base}/login`, req, { headers }).pipe(
       tap(res => {
         sessionStorage.setItem('token', res.accessToken);
+        sessionStorage.setItem('userRole', res.role); // Guardar rol del usuario
         this.scheduleAutoLogoutFromToken(res.accessToken);
       })
     );
@@ -158,5 +161,18 @@ export class AutentificacionService implements OnDestroy {
   // Verifica código de 6 dígitos y actualiza contraseña del usuario
   resetPassword(request: ResetPasswordRequest): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.base}/password/reset`, request);
+  }
+
+  // ======================== Role Helpers ========================
+
+  // Verifica si el usuario actual tiene rol de administrador
+  isAdmin(): boolean {
+    return sessionStorage.getItem('userRole') === 'ADMIN';
+  }
+
+  // Obtiene el rol del usuario actual ('USER' o 'ADMIN'), null si no está autenticado
+  getUserRole(): 'USER' | 'ADMIN' | null {
+    const role = sessionStorage.getItem('userRole');
+    return role === 'USER' || role === 'ADMIN' ? role : null;
   }
 }

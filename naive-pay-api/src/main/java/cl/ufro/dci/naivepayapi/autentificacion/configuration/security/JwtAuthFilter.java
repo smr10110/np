@@ -21,8 +21,12 @@ import org.springframework.http.HttpMethod;
 
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 
 @Component
@@ -111,10 +115,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
 
 
+            // Extraer rol del token y crear authorities
+            String role = claims.get("role", String.class);
+            List<GrantedAuthority> authorities = new ArrayList<>();
+            if (role != null && !role.isEmpty()) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+            }
+
             var auth = new UsernamePasswordAuthenticationToken(
                     claims.getSubject(),
                     null,
-                    Collections.emptyList()
+                    authorities  // Pasar authorities con el rol
             );
             auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(auth);

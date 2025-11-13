@@ -10,6 +10,7 @@ import cl.ufro.dci.naivepayapi.comercio.repository.CommerceCategoryRepository;
 import cl.ufro.dci.naivepayapi.comercio.service.CommerceValidationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -43,18 +44,21 @@ public class CommerceValidationController {
     }
 
     @GetMapping("/pending")
+    @PreAuthorize("hasRole('ADMIN')") // Solo admins pueden ver solicitudes pendientes
     public ResponseEntity<List<CommerceValidation>> getPendingRequests() {
         List<CommerceValidation> pendingRequests = validationService.getPendingRequests();
         return ResponseEntity.ok(pendingRequests);
     }
 
     @GetMapping("/expired")
+    @PreAuthorize("hasRole('ADMIN')") // Solo admins pueden ver solicitudes expiradas
     public ResponseEntity<List<CommerceValidation>> getExpiredRequests() {
         List<CommerceValidation> expiredRequestsRequests = validationService.getExpiredRequests();
         return ResponseEntity.ok(expiredRequestsRequests);
     }
 
     @PutMapping("/approve/{id}")
+    @PreAuthorize("hasRole('ADMIN')") // Solo admins pueden aprobar comercios
     public ResponseEntity<Commerce> approveRequest(
             @PathVariable Long id,
             @RequestBody CommerceApproval dto
@@ -68,12 +72,14 @@ public class CommerceValidationController {
     }
 
     @PutMapping("/reject/{id}")
+    @PreAuthorize("hasRole('ADMIN')") // Solo admins pueden rechazar comercios
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void rejectRequest(@PathVariable Long id) {
         validationService.rejectRequest(id);
     }
 
     @GetMapping("/rejected")
+    @PreAuthorize("hasRole('ADMIN')") // Solo admins pueden ver solicitudes rechazadas
     public List<CommerceValidation> getRejected() {
         return validationService.getRejectedRequests();
     }
