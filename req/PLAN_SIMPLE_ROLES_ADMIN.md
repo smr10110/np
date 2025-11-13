@@ -7,19 +7,29 @@ Proteger endpoints backend y rutas frontend para que SOLO usuarios con rol ADMIN
 
 ## FASE 1: BASE DE DATOS Y USUARIO ADMIN
 
-### Opción A: Automático con AdminUserInitializer (RECOMENDADO para desarrollo) ✅
+### Opción A: data.sql (ACTIVO - Más simple) ✅
 
-**Archivo:** `AdminUserInitializer.java` (YA CREADO)
+**Archivo:** `src/main/resources/data.sql` (YA CREADO)
 
-- ✅ Crea el admin automáticamente al arrancar la app
-- ✅ Idempotente (solo crea si no existe)
-- ✅ Hashea la contraseña con BCrypt
+- ✅ Se ejecuta automáticamente al arrancar Spring Boot
+- ✅ Idempotente (WHERE NOT EXISTS)
+- ✅ Hash BCrypt pre-generado incluido
+- ✅ Requiere `spring.jpa.defer-datasource-initialization=true`
+- ⚠️ NO genera claves RSA (pueden agregarse después)
+
+**Configurado en:** `application-dev.properties`
+
+### Opción B: AdminUserInitializer.java (DESACTIVADO)
+
+**Archivo:** `AdminUserInitializer.java` (DISPONIBLE pero comentado)
+
+- ✅ Genera hash BCrypt dinámicamente
 - ✅ Genera claves RSA automáticamente
-- ✅ Crea Register, User, Credencial y Account
+- ✅ Más completo pero más complejo
 
-**No requiere configuración manual**
+**Para activarlo:** Ver `README_DATA_SQL.md`
 
-### Opción B: Migración SQL manual (para producción)
+### Opción C: Migración SQL manual (para producción)
 
 **Archivo:** `/home/user/np/db/migrations/001_add_user_roles.sql`
 

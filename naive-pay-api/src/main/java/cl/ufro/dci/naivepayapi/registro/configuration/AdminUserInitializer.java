@@ -31,8 +31,14 @@ import java.util.Date;
  * - RUT: 11111111-1
  * - Password: Admin@2025
  * - Rol: ADMIN
+ *
+ * NOTA: Esta clase está DESACTIVADA porque se usa data.sql en su lugar.
+ * Para activar este enfoque en lugar de data.sql:
+ * 1. Descomentar @Component("adminUserInitializer")
+ * 2. Borrar o renombrar src/main/resources/data.sql
+ * 3. Quitar spring.jpa.defer-datasource-initialization=true de application-dev.properties
  */
-@Component("adminUserInitializer")
+//@Component("adminUserInitializer") // DESACTIVADO - usando data.sql en su lugar
 public class AdminUserInitializer implements CommandLineRunner {
 
     private static final String ADMIN_EMAIL = "admin@naivepay.cl";
