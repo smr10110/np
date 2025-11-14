@@ -1,0 +1,529 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< cl.ufro.dci:naive-pay-api >----------------------
+[INFO] Building naive-pay-api 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.5.6:run (default-cli) > test-compile @ naive-pay-api >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ naive-pay-api ---
+[INFO] Copying 3 resources from src\main\resources to target\classes
+[INFO] Copying 3 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.0:compile (default-compile) @ naive-pay-api ---
+[INFO] Recompiling the module because of added or removed source files.
+[INFO] Compiling 134 source files with javac [debug parameters release 21] to target\classes
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ naive-pay-api ---
+[INFO] skip non existing resourceDirectory C:\Users\angel\OneDrive\Escritorio\np\naive-pay-api\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ naive-pay-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 1 source file with javac [debug parameters release 21] to target\test-classes
+[INFO] 
+[INFO] <<< spring-boot:3.5.6:run (default-cli) < test-compile @ naive-pay-api <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.5.6:run (default-cli) @ naive-pay-api ---
+[INFO] Attaching agents: []
+  _   _       _           _____                      __          __  _
+ | \ | |     (_)         |  __ \                     \ \        / / | |
+ |  \| | __ _ ___   _____| |__) |_ _ _   _   ______   \ \  /\  / /__| |__
+ | . ` |/ _` | \ \ / / _ \  ___/ _` | | | | |______|   \ \/  \/ / _ \ '_ \
+ | |\  | (_| | |\ V /  __/ |  | (_| | |_| |             \  /\  /  __/ |_) |
+ |_| \_|\__,_|_| \_/ \___|_|   \__,_|\__, |              \/  \/ \___|_.__/
+                                      __/ |
+                                     |___/
+
+                      /^--^\     /^--^\     /^--^\
+                      \____/     \____/     \____/
+                     /      \   /      \   /      \
+                    |        | |        | |        |
+                     \__  __/   \__  __/   \__  __/
+|^|^|^|^|^|^|^|^|^|^|^|^\ \^|^|^|^/ /^|^|^|^|^\ \^|^|^|^|^|^|^|^|^|^|^|^|^|
+| | | | | | | | | | | | |\ \| | |/ /| | | | | | \ \ | | | | | | | | | | | |
+| | | | | | | | | | | | / / | | |\ \| | | | | |/ /| | | | | | | | | | | | |
+| | | | | | | | | | | | \/| | | | \/| | | | | |\/ | | | | | | | | | | | | |
+###########################################################################
+| | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+23:44:07 [INFO] NaivePayApiApplication - Starting NaivePayApiApplication using Java 21.0.7 with PID 23348 (C:\Users\angel\OneDrive\Escritorio\np\naive-pay-api\target\classes started by angel in C:\Users\angel\OneDrive\Escritorio\np\naive-pay-api)
+23:44:07 [DEBUG] NaivePayApiApplication - Running with Spring Boot v3.5.6, Spring v6.2.11
+23:44:07 [INFO] NaivePayApiApplication - The following 1 profile is active: "dev"
+23:44:07 [INFO] DevToolsPropertyDefaultsPostProcessor - Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+23:44:07 [INFO] DevToolsPropertyDefaultsPostProcessor - For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+23:44:08 [INFO] RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+23:44:08 [INFO] RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 109 ms. Found 19 JPA repository interfaces.
+23:44:09 [INFO] TomcatWebServer - Tomcat initialized with port 8080 (http)
+23:44:09 [INFO] StandardService - Starting service [Tomcat]
+23:44:09 [INFO] StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.46]
+23:44:09 [INFO] [/] - Initializing Spring embedded WebApplicationContext
+23:44:09 [INFO] ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 1958 ms
+23:44:09 [INFO] LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+23:44:09 [INFO] Version - HHH000412: Hibernate ORM core version 6.6.29.Final
+23:44:09 [INFO] RegionFactoryInitiator - HHH000026: Second-level cache disabled
+23:44:09 [INFO] SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+23:44:09 [INFO] HikariDataSource - HikariPool-1 - Starting...
+23:44:09 [INFO] HikariPool - HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:naivepaydb user=SA
+23:44:09 [INFO] HikariDataSource - HikariPool-1 - Start completed.
+23:44:09 [INFO] pooling - HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 2.3.232
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+23:44:11 [INFO] JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+Hibernate: 
+    create table accounts (
+        id bigint generated by default as identity,
+        available_balance numeric(15,2) not null,
+        creation_date timestamp(6) not null,
+        last_update timestamp(6) not null,
+        user_id bigint not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table app_user (
+        use_id bigint generated by default as identity,
+        use_adress varchar(255),
+        use_birth_date date,
+        use_last_names varchar(255),
+        use_names varchar(255),
+        use_phone_number bigint,
+        use_profession varchar(255),
+        use_role enum ('ADMIN','USER') not null,
+        use_rut_general bigint,
+        use_state enum ('ACTIVE','INACTIVE'),
+        use_verification_digit char(1) not null,
+        credencial_id bigint,
+        register_id bigint,
+        primary key (use_id)
+    )
+Hibernate: 
+    create table attempt_auth (
+        att_id bigint generated by default as identity,
+        att_occurred timestamp(6) with time zone not null,
+        att_reason enum ('ACCOUNT_BLOCKED','BAD_CREDENTIALS','DEVICE_REQUIRED','DEVICE_UNAUTHORIZED','OK','PASSWORD_RESET','USER_NOT_FOUND') not null,
+        att_success boolean not null,
+        dev_fingerprint varchar(100) not null,
+        primary key (att_id)
+    )
+Hibernate: 
+    create table change (
+        cha_id bigint generated by default as identity,
+        cha_date_change timestamp(6),
+        credencial_id bigint,
+        register_id bigint,
+        primary key (cha_id)
+    )
+Hibernate: 
+    create table commerce (
+        com_id bigint generated by default as identity,
+        com_contact_phone varchar(255),
+        com_description TEXT,
+        com_email varchar(255),
+        com_location varchar(255),
+        com_name varchar(255),
+        com_tax_id varchar(255),
+        com_commerce_id integer,
+        com_is_verified boolean,
+        com_verification_date timestamp(6),
+        com_verification_valid_until timestamp(6),
+        primary key (com_id)
+    )
+Hibernate: 
+    create table commerce_category_join (
+        commerce_id bigint not null,
+        category_id bigint not null,
+        primary key (commerce_id, category_id)
+    )
+Hibernate: 
+    create table commerce_category (
+        cat_id bigint generated by default as identity,
+        cat_description varchar(255),
+        cat_name varchar(255),
+        primary key (cat_id)
+    )
+Hibernate: 
+    create table commerce_validation (
+        com_val_id bigint generated by default as identity,
+        com_contact_phone varchar(255),
+        com_description TEXT,
+        com_email varchar(255),
+        com_location varchar(255),
+        com_name varchar(255),
+        com_tax_id varchar(255),
+        com_status enum ('EXPIRED','INVALID','PENDING','VALIDATED'),
+        primary key (com_val_id)
+    )
+Hibernate: 
+    create table credencial (
+        cre_id bigint generated by default as identity,
+        cre_active_dinamic_key boolean,
+        cre_creation_date timestamp(6),
+        cre_denied boolean,
+        cre_private_key_rsa clob,
+        cre_public_key_rsa clob,
+        primary key (cre_id)
+    )
+Hibernate: 
+    create table device (
+        dev_fingerprint varchar(100) not null,
+        dev_browser varchar(100) not null,
+        dev_last_login TIMESTAMP,
+        dev_os varchar(100) not null,
+        dev_reg_date TIMESTAMP not null,
+        dev_type varchar(100) not null,
+        use_id bigint not null,
+        primary key (dev_fingerprint)
+    )
+Hibernate: 
+    create table device_log (
+        devlog_id bigint generated by default as identity,
+        devlog_action varchar(25) not null,
+        devlog_created_at TIMESTAMP not null,
+        devlog_details varchar(100),
+        devlog_browser_snapshot varchar(100),
+        devlog_fp_snapshot varchar(100),
+        devlog_os_snapshot varchar(100),
+        devlog_type_snapshot varchar(50),
+        devlog_result varchar(25) not null,
+        use_id bigint not null,
+        dev_fingerprint varchar(100),
+        primary key (devlog_id)
+    )
+Hibernate: 
+    create table device_recovery (
+        dev_recover_id uuid not null,
+        dev_rec_code varchar(6) not null,
+        dev_rec_expire timestamp(6) with time zone not null,
+        dev_rec_fp varchar(100) not null,
+        dev_rec_requested timestamp(6) with time zone not null,
+        dev_rec_status varchar(16) not null,
+        dev_rec_verified timestamp(6) with time zone,
+        use_id bigint not null,
+        primary key (dev_recover_id)
+    )
+Hibernate: 
+    create table password_recovery (
+        pas_id bigint generated by default as identity,
+        pas_code varchar(40) not null,
+        pas_created timestamp(6) with time zone not null,
+        pas_expired timestamp(6) with time zone not null,
+        pas_last_sent timestamp(6) with time zone,
+        pas_resend_count integer not null,
+        pas_status enum ('EXPIRED','PENDING','USED') not null,
+        pas_used timestamp(6) with time zone,
+        use_id bigint not null,
+        primary key (pas_id)
+    )
+Hibernate: 
+    create table payment_transaction (
+        id bigint generated by default as identity,
+        amount numeric(38,2),
+        category varchar(255),
+        commerce varchar(255),
+        created_at timestamp(6),
+        customer varchar(255),
+        destination_account bigint,
+        origin_account bigint,
+        status enum ('APPROVED','CANCELED','PENDING','REJECTED'),
+        primary key (id)
+    )
+Hibernate: 
+    create table register (
+        reg_id bigint generated by default as identity,
+        reg_email varchar(255),
+        reg_hashed_login_password varchar(255),
+        reg_register_date timestamp(6),
+        reg_verification_code varchar(255),
+        reg_verification_code_expiration timestamp(6),
+        reg_verified boolean not null,
+        primary key (reg_id)
+    )
+Hibernate: 
+    create table reward_account (
+        rewacc_id bigint generated by default as identity,
+        rewacc_description varchar(255),
+        rewacc_last_update TIMESTAMP not null,
+        rewacc_points integer not null,
+        user_id bigint not null,
+        primary key (rewacc_id)
+    )
+Hibernate: 
+    create table reward_transaction (
+        rewtrn_id bigint generated by default as identity,
+        rewtrn_created_at TIMESTAMP not null,
+        rewtrn_description varchar(255),
+        rewtrn_points integer not null,
+        rewtrn_status enum ('APPROVED','CANCELED','COMPLETED','PENDING','REJECTED') not null,
+        rewtrn_type enum ('ACCUMULATE','REDEEM') not null,
+        user_id bigint not null,
+        primary key (rewtrn_id)
+    )
+Hibernate: 
+    create table session (
+        ses_id bigint generated by default as identity,
+        ses_closed timestamp(6) with time zone,
+        ses_created timestamp(6) with time zone not null,
+        ses_expires timestamp(6) with time zone not null,
+        ses_jti uuid not null,
+        ses_status enum ('ACTIVE','CLOSED') not null,
+        att_id_initial bigint not null,
+        primary key (ses_id)
+    )
+Hibernate: 
+    create table transactions (
+        id bigint generated by default as identity,
+        amount numeric(15,2) not null,
+        commerce_name varchar(255),
+        customer_name varchar(255),
+        date_time timestamp(6) not null,
+        description varchar(255),
+        payment_category varchar(255),
+        transaction_status enum ('CANCELED','COMPLETED','PENDING','REJECTED'),
+        transaction_type enum ('LOAD','PAYMENT','PAYMENT_CANCELED','PAYMENT_PENDING','PAYMENT_REJECTED','TRANSFER') not null,
+        destination_account_id bigint,
+        origin_account_id bigint,
+        primary key (id)
+    )
+Hibernate: 
+    alter table if exists accounts 
+       drop constraint if exists UKe4w4av1wrhanry7t6mxt42nou
+Hibernate: 
+    alter table if exists accounts 
+       add constraint UKe4w4av1wrhanry7t6mxt42nou unique (user_id)
+Hibernate: 
+    alter table if exists app_user 
+       drop constraint if exists UK75k5qw6sxjgv6imt26l7074do
+Hibernate: 
+    alter table if exists app_user 
+       add constraint UK75k5qw6sxjgv6imt26l7074do unique (credencial_id)
+Hibernate: 
+    alter table if exists app_user 
+       drop constraint if exists UK72l47do4hhlfyal0wmelhsf5b
+Hibernate: 
+    alter table if exists app_user 
+       add constraint UK72l47do4hhlfyal0wmelhsf5b unique (register_id)
+Hibernate: 
+    alter table if exists device 
+       drop constraint if exists UKknqi4u8l9ag0pop1vasp9l54
+Hibernate: 
+    alter table if exists device 
+       add constraint UKknqi4u8l9ag0pop1vasp9l54 unique (use_id)
+Hibernate: 
+    create index idx_rewacc_user 
+       on reward_account (user_id)
+Hibernate: 
+    alter table if exists reward_account 
+       drop constraint if exists UK8tdt3v573xi02lg0mcyhhpu8r
+Hibernate: 
+    alter table if exists reward_account 
+       add constraint UK8tdt3v573xi02lg0mcyhhpu8r unique (user_id)
+Hibernate: 
+    create index idx_rewtrn_user 
+       on reward_transaction (user_id)
+Hibernate: 
+    create index idx_rewtrn_status 
+       on reward_transaction (rewtrn_status)
+Hibernate: 
+    alter table if exists session 
+       drop constraint if exists UKjdykiwetguqjrbgopcndecxkb
+Hibernate: 
+    alter table if exists session 
+       add constraint UKjdykiwetguqjrbgopcndecxkb unique (ses_jti)
+Hibernate: 
+    alter table if exists app_user 
+       add constraint FKhnwyup472o1fuft5ji1ekptgd 
+       foreign key (credencial_id) 
+       references credencial
+Hibernate: 
+    alter table if exists app_user 
+       add constraint FKf4de4f83ic1e3g94k8y83v9w0 
+       foreign key (register_id) 
+       references register
+Hibernate: 
+    alter table if exists attempt_auth 
+       add constraint fk_attempt_device FOREIGN KEY (dev_fingerprint) REFERENCES device(dev_fingerprint) ON DELETE CASCADE
+Hibernate: 
+    alter table if exists change 
+       add constraint FK9b4awlyr9dfnlsags3jeeueob 
+       foreign key (credencial_id) 
+       references credencial
+Hibernate: 
+    alter table if exists change 
+       add constraint FKnkn1q69hne29gc197s2hsdgud 
+       foreign key (register_id) 
+       references register
+Hibernate: 
+    alter table if exists commerce_category_join 
+       add constraint FKcp80o9et50al9dpja65oquhsk 
+       foreign key (category_id) 
+       references commerce_category
+Hibernate: 
+    alter table if exists commerce_category_join 
+       add constraint FKbtdl7h7wq7ne0qrmhawyesqt3 
+       foreign key (commerce_id) 
+       references commerce
+Hibernate: 
+    alter table if exists device 
+       add constraint fk_dev_user 
+       foreign key (use_id) 
+       references app_user
+Hibernate: 
+    alter table if exists device_log 
+       add constraint fk_devlog_device 
+       foreign key (dev_fingerprint) 
+       references device
+Hibernate: 
+    alter table if exists device_recovery 
+       add constraint fk_devrec_user 
+       foreign key (use_id) 
+       references app_user
+Hibernate: 
+    alter table if exists password_recovery 
+       add constraint FK3ts8jgplqn378isqmado6jt07 
+       foreign key (use_id) 
+       references app_user
+Hibernate: 
+    alter table if exists reward_account 
+       add constraint fk_rewacc_user 
+       foreign key (user_id) 
+       references app_user
+Hibernate: 
+    alter table if exists reward_transaction 
+       add constraint fk_rewtrn_user 
+       foreign key (user_id) 
+       references app_user
+Hibernate: 
+    alter table if exists session 
+       add constraint fk_session_auth_attempt FOREIGN KEY (att_id_initial) REFERENCES attempt_auth(att_id) ON DELETE CASCADE
+Hibernate: 
+    alter table if exists transactions 
+       add constraint FK5598b948ilps8u4o3qvfo4j52 
+       foreign key (destination_account_id) 
+       references accounts
+Hibernate: 
+    alter table if exists transactions 
+       add constraint FKbyq02vjcctqu84njk1cjk6aa9 
+       foreign key (origin_account_id) 
+       references accounts
+23:44:11 [INFO] LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+23:44:11 [INFO] QueryEnhancerFactory - Hibernate is in classpath; If applicable, HQL parser will be used.
+23:44:12 [DEBUG] JwtAuthFilter - Filter 'jwtAuthFilter' configured for use
+23:44:12 [WARN] JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+23:44:12 [WARN] UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 65fbb662-73fa-4b9e-a54e-0141a02ae975
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+23:44:12 [INFO] InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer - Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+23:44:13 [INFO] H2ConsoleAutoConfiguration - H2 console available at '/h2-console'. Database available at 'jdbc:h2:mem:naivepaydb'
+23:44:13 [INFO] OptionalLiveReloadServer - LiveReload server is running on port 35729
+23:44:13 [INFO] TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
+23:44:13 [INFO] NaivePayApiApplication - Started NaivePayApiApplication in 6.61 seconds (process running for 7.009)
+Inicializando datos de prueba en la tabla de pagos...
+Hibernate: 
+    select
+        pt1_0.id,
+        pt1_0.amount,
+        pt1_0.category,
+        pt1_0.commerce,
+        pt1_0.created_at,
+        pt1_0.customer,
+        pt1_0.destination_account,
+        pt1_0.origin_account,
+        pt1_0.status 
+    from
+        payment_transaction pt1_0
+Hibernate: 
+    insert 
+    into
+        payment_transaction
+        (amount, category, commerce, created_at, customer, destination_account, origin_account, status, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, default)
+Hibernate: 
+    insert 
+    into
+        payment_transaction
+        (amount, category, commerce, created_at, customer, destination_account, origin_account, status, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, default)
+Hibernate: 
+    insert 
+    into
+        payment_transaction
+        (amount, category, commerce, created_at, customer, destination_account, origin_account, status, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, default)
+Hibernate: 
+    insert 
+    into
+        payment_transaction
+        (amount, category, commerce, created_at, customer, destination_account, origin_account, status, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, default)
+Hibernate: 
+    insert 
+    into
+        payment_transaction
+        (amount, category, commerce, created_at, customer, destination_account, origin_account, status, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, default)
+DataInitializer: Insertados 5 registros en la tabla de pagos.
+Hibernate: 
+    select
+        a1_0.id 
+    from
+        accounts a1_0 
+    where
+        a1_0.user_id=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    insert 
+    into
+        accounts
+        (available_balance, creation_date, last_update, user_id, id) 
+    values
+        (?, ?, ?, ?, default)
+System account created (userId=0) with balance: 999999.00
+Database fondos initialized
+Hibernate: 
+    select
+        count(*) 
+    from
+        commerce_category cc1_0
+Hibernate: 
+    insert 
+    into
+        commerce_category
+        (cat_description, cat_name, cat_id) 
+    values
+        (?, ?, default)
+Hibernate: 
+    insert 
+    into
+        commerce_category
+        (cat_description, cat_name, cat_id) 
+    values
+        (?, ?, default)
+Categorías iniciales creadas exitosamente
+23:48:51 [INFO] GracefulShutdown - Commencing graceful shutdown. Waiting for active requests to complete
+23:48:51 [INFO] GracefulShutdown - Graceful shutdown complete
+23:48:51 [INFO] LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+23:48:51 [WARN] DisposableBeanAdapter - Invocation of destroy method failed on bean with name 'inMemoryDatabaseShutdownExecutor': org.h2.jdbc.JdbcSQLNonTransientConnectionException: La base de datos ya esta cerrada (para des-habilitar el cerrado automatico durante el shutdown de la VM, agregue ";DB_CLOSE_ON_EXIT=FALSE" a la URL de conexiÃ³n)
+Database is already closed (to disable automatic closing at VM shutdown, add ";DB_CLOSE_ON_EXIT=FALSE" to the db URL) [90121-232]
+23:48:51 [INFO] HikariDataSource - HikariPool-1 - Shutdown initiated...
+23:48:51 [INFO] HikariDataSource - HikariPool-1 - Shutdown completed.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  04:52 min
+[INFO] Finished at: 2025-11-12T23:48:52-03:00
+[INFO] ------------------------------------------------------------------------

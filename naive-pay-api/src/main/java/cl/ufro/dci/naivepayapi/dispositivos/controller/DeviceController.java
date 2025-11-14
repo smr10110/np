@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -35,6 +36,7 @@ public class DeviceController {
     private final DeviceRecoveryService deviceRecoveryService;
 
     @PostMapping("/link")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Device> linkDevice(@RequestBody CreateDeviceRequest body, HttpServletRequest request) {
         Long userId = deviceTokenUtil.extractUserIdFromRequest(request);
 
@@ -62,6 +64,7 @@ public class DeviceController {
     }
 
     @DeleteMapping("/unlink")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> unlinkDevice(HttpServletRequest req) {
         Long userId = getAuthenticatedUserId();
         String fp = req.getHeader("X-Device-Fingerprint");

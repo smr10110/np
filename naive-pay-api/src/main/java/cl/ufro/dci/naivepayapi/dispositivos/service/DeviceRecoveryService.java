@@ -249,7 +249,7 @@ public class DeviceRecoveryService {
         // 2. Create Session with the AuthAttempt
         var session = authSessionService.saveActiveSession(jti, initialAuthAttempt, exp);
 
-        return new LoginResponse(token, exp.toString(), session.getSesId().toString());
+        return new LoginResponse(token, exp.toString(), session.getSesId().toString(), user.getUseRole().name());
     }
 
     /**

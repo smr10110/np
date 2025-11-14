@@ -123,11 +123,11 @@ export class AutentificacionService implements OnDestroy {
   // Autentica usuario con email/RUT y contraseña, guarda token, rol y programa auto-logout
   login(req: LoginRequest): Observable<LoginResponse> {
     const headers = new HttpHeaders().set('X-Device-Fingerprint', this.deviceFp.get());
+    console.info('[Auth] Intentando login', { identifier: req.identifier });
     return this.http.post<LoginResponse>(`${this.base}/login`, req, { headers }).pipe(
       tap(res => {
-        sessionStorage.setItem('token', res.accessToken);
-        sessionStorage.setItem('userRole', res.role); // Guardar rol del usuario
-        this.scheduleAutoLogoutFromToken(res.accessToken);
+        console.info('[Auth] Login exitoso, almacenando sesion', { identifier: req.identifier, role: res.role });
+        this.persistSession(res.accessToken, res.role);
       })
     );
   }
@@ -174,5 +174,16 @@ export class AutentificacionService implements OnDestroy {
   getUserRole(): 'USER' | 'ADMIN' | null {
     const role = sessionStorage.getItem('userRole');
     return role === 'USER' || role === 'ADMIN' ? role : null;
+  }
+
+  restoreSession(token: string, role: 'USER' | 'ADMIN'): void {
+    console.info('[Auth] Restaurando sesion externa', { role });
+    this.persistSession(token, role);
+  }
+
+  private persistSession(token: string, role: 'USER' | 'ADMIN'): void {
+    sessionStorage.setItem('token', token);
+    sessionStorage.setItem('userRole', role);
+    this.scheduleAutoLogoutFromToken(token);
   }
 }

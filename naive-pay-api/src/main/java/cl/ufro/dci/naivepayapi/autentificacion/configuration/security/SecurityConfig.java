@@ -19,7 +19,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 @Configuration
-@EnableMethodSecurity(prePostEnabled = true) // Habilitar @PreAuthorize y @PostAuthorize
+@EnableMethodSecurity() // Habilitar @PreAuthorize y @PostAuthorize
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
@@ -62,8 +62,6 @@ public class SecurityConfig {
                 "X-Device-Type",
                 "X-Device-Browser"
         ));
-        cfg.setAllowCredentials(true);
-        cfg.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cfg);

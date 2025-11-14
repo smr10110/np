@@ -8,6 +8,7 @@ export interface LoginResponse {
     accessToken: string;
     expiresAt: string;
     jti: string;
+    role: 'USER' | 'ADMIN';
 }
 
 

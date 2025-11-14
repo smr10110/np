@@ -8,14 +8,16 @@ import { inject } from '@angular/core';
  */
 export const adminGuard: CanActivateFn = () => {
   const role = sessionStorage.getItem('userRole');
+  console.info('[Guard][Admin] Validando acceso', { role });
 
   // Verificar que el usuario sea ADMIN
   if (role === 'ADMIN') {
+    console.info('[Guard][Admin] Acceso concedido');
     return true;
   }
 
   // Si no es ADMIN, redirigir al dashboard
   const router = inject(Router);
-  console.warn('Acceso denegado: Se requiere rol ADMIN');
+  console.warn('[Guard][Admin] Acceso denegado: se requiere rol ADMIN');
   return router.createUrlTree(['/']);
 };

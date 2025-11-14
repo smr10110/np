@@ -1,4 +1,5 @@
-import {Component, Input, SimpleChanges} from '@angular/core';
+import {Component} from '@angular/core';
+import {CommonModule} from '@angular/common';
 import {CommerceValidation, SearchCommerceServiceService} from "../../service/search-commerce-service.service";
 import {IncomeCommerceServiceService} from "../../service/income-commerce-service.service";
 import {ButtonComponent} from "@shared/components/ui/button/button.component";
@@ -37,7 +38,9 @@ export interface CommerceInfo {
 
 @Component({
     selector: 'app-validation-process',
+    standalone: true,
     imports: [
+        CommonModule,
         ButtonComponent
     ],
     templateUrl: './validation-process.component.html',
@@ -54,7 +57,13 @@ export class ValidationProcessComponent {
     constructor(private searchService : SearchCommerceServiceService, private validationService : IncomeCommerceServiceService) {
     }
 
-    ngOnInit () : void{ this.loadPendingCommerces(); this.loadRejectedCommmerces(); this.loadExpiredCommmerces(); this.loadValidCommmerces()}
+    ngOnInit () : void{
+        console.info('[Validation] Inicializando vista de validacion de comercios');
+        this.loadPendingCommerces();
+        this.loadRejectedCommmerces();
+        this.loadExpiredCommmerces();
+        this.loadValidCommmerces()
+    }
 
 
 
@@ -62,10 +71,10 @@ export class ValidationProcessComponent {
         this.searchService.getPendingCommerce().subscribe({
             next : (data) =>{
                 this.pendingCommerces = data;
-
+                console.info('[Validation] Pendientes cargados', { total: data.length });
             },
             error: (error) => {
-                console.log("Error retrieving commerces: ", error);
+                console.error("[Validation] Error al obtener pendientes", error);
             }
         })
     }
@@ -74,9 +83,10 @@ export class ValidationProcessComponent {
         this.searchService.getRejectedCommerce().subscribe({
             next : (data) =>{
                 this.rejectedCommerces = data;
+                console.info('[Validation] Rechazados cargados', { total: data.length });
             },
             error: (error) => {
-                console.log("Error retrieving rejected: ", error);
+                console.error("[Validation] Error al obtener rechazados", error);
             }
         })
     }
@@ -85,9 +95,10 @@ export class ValidationProcessComponent {
         this.searchService.getExpiredCommerce().subscribe({
             next : (data) =>{
                 this.expiredCommerces = data;
+                console.info('[Validation] Expirados cargados', { total: data.length });
             },
             error: (error) => {
-                console.log("Error retrieving expired commerce: ", error);
+                console.error("[Validation] Error al obtener expirados", error);
             }
         })
     }
@@ -96,9 +107,10 @@ export class ValidationProcessComponent {
         this.searchService.getCommerces().subscribe({
             next : (data) =>{
                 this.validCommerces = data;
+                console.info('[Validation] Comercios validados cargados', { total: data.length });
             },
             error: (error) => {
-                console.log("Error retrieving valid commerce: ", error);
+                console.error("[Validation] Error al obtener comercios validados", error);
             }
         })
     }
@@ -106,25 +118,29 @@ export class ValidationProcessComponent {
 
     approveCommerce(comValId: number): void {
         var dto: { categoryIds: number[] } = { categoryIds:[0]};
+        console.info('[Validation] Aprobando comercio', { comValId });
         this.validationService.approveCommerce(comValId, dto).subscribe({
             next: () => {
+                console.info('[Validation] Comercio aprobado', { comValId });
                 this.loadPendingCommerces();
                 this.loadValidCommmerces();
             },
             error: (error) => {
-                console.error('Error approving commerce', error);
+                console.error('[Validation] Error aprobando comercio', error);
             }
         });
     }
 
     rejectCommerce(comValId: number): void {
+        console.info('[Validation] Rechazando comercio', { comValId });
         this.validationService.rejectCommerce(comValId).subscribe({
             next: () => {
+                console.info('[Validation] Comercio rechazado', { comValId });
                 this.loadPendingCommerces();
                 this.loadRejectedCommmerces();
             },
             error: (error) => {
-                console.error('Error rejecting commerce', error);
+                console.error('[Validation] Error rechazando comercio', error);
             }
         });
     }
