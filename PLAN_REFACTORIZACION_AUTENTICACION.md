@@ -1,16 +1,64 @@
-# Plan de Refactorización - Servicios de Autenticación
-## Análisis Actualizado - Código Actual
+# Plan de Refactorización - Módulo de Autenticación
+## Análisis enfocado exclusivamente en el paquete `autentificacion`
+
+---
+
+## 📦 Alcance del Análisis
+
+**Paquete analizado:** `cl.ufro.dci.naivepayapi.autentificacion`
+
+**Archivos incluidos (29 archivos):**
+```
+autentificacion/
+├── controller/
+│   ├── AuthController.java
+│   └── PasswordRecoveryController.java
+├── service/
+│   ├── AuthService.java
+│   ├── JWTService.java (interfaz)
+│   ├── AccountLockService.java
+│   ├── AuthAttemptService.java
+│   ├── AuthSessionService.java
+│   ├── LoginRequestValidator.java
+│   ├── PasswordRecoveryService.java
+│   ├── RutUtils.java
+│   └── impl/
+│       └── JWTServiceImpl.java
+├── configuration/security/
+│   ├── SecurityConfig.java
+│   ├── JwtAuthFilter.java
+│   ├── RestAuthenticationEntryPoint.java
+│   └── GlobalExceptionHandler.java
+├── domain/
+│   ├── Session.java
+│   ├── AuthAttempt.java
+│   ├── PasswordRecovery.java
+│   └── enums/
+│       ├── SessionStatus.java
+│       ├── AuthAttemptReason.java
+│       └── PasswordRecoveryStatus.java
+├── repository/
+│   ├── SessionRepository.java
+│   ├── AuthAttemptRepository.java
+│   └── PasswordRecoveryRepository.java
+├── dto/
+│   ├── LoginRequest.java
+│   ├── LoginResponse.java
+│   ├── ForgotPasswordRequest.java
+│   └── ResetPasswordRequest.java
+└── exception/
+    └── AuthenticationFailedException.java
+```
 
 ---
 
 ## 🟡 CÓDIGO DUPLICADO
 
-### 1. **Método `isBlank()` - Triplicado**
+### 1. **Método `isBlank()` duplicado**
 
-**Ubicaciones:**
-1. `AuthService.java:313-314`
-2. `LoginRequestValidator.java:79-80`
-3. `DeviceController.java:149`
+**Ubicaciones dentro de `autentificacion`:**
+1. `service/AuthService.java:313-314`
+2. `service/LoginRequestValidator.java:79-80`
 
 **Código duplicado:**
 ```java
@@ -23,42 +71,36 @@ private static boolean isBlank(String s) {
 private boolean isBlank(String s) {
     return s == null || s.trim().isEmpty();
 }
-
-// DeviceController.java:149
-private static boolean isBlank(String s) { return s == null || s.trim().isEmpty(); }
 ```
 
-**Impacto:** Medio - Código trivial pero innecesariamente triplicado.
+**Impacto:** Bajo - Código trivial duplicado en 2 lugares.
 
 **Solución:**
-Opción A (recomendada): Usar utilidad existente de Spring
+Usar utilidad de Spring Framework (ya disponible en el proyecto):
+
 ```java
 import org.springframework.util.StringUtils;
 
-// Reemplazar isBlank(str) por !StringUtils.hasText(str)
+// Reemplazar:
+// isBlank(str)
+// por:
+// !StringUtils.hasText(str)
 ```
 
-Opción B: Crear clase utilitaria propia
-```java
-// Crear: autentificacion/util/StringUtil.java
-public class StringUtil {
-    public static boolean isBlank(String s) {
-        return s == null || s.trim().isEmpty();
-    }
-}
-```
+**Archivos a modificar:**
+- ✅ `AuthService.java` → línea 167, 324
+- ✅ `LoginRequestValidator.java` → línea 50, 65
+- ✅ Eliminar método privado `isBlank()` de ambos archivos
 
 ---
 
-### 2. **Extracción de Bearer Token - Triplicado**
+### 2. **Extracción de Bearer Token duplicada**
 
-**Ubicaciones:**
-1. `AuthService.java:323-328` → método `extractBearer()`
-2. `DeviceTokenUtil.java:49-57` → método `extractBearerTokenFromHeader()`
-3. `JwtAuthFilter.java:78-85` → implementación inline
+**Ubicaciones dentro de `autentificacion`:**
+1. `service/AuthService.java:323-328` → método `extractBearer()`
+2. `configuration/security/JwtAuthFilter.java:78-85` → implementación inline
 
 **Código duplicado:**
-
 ```java
 // AuthService.java:323-328
 private String extractBearer(String authHeader) {
@@ -66,17 +108,6 @@ private String extractBearer(String authHeader) {
         return null;
     }
     return authHeader.substring(BEARER_PREFIX.length()).trim();
-}
-
-// DeviceTokenUtil.java:49-57
-public String extractBearerTokenFromHeader(String authorizationHeaderValue) {
-    if (authorizationHeaderValue == null || authorizationHeaderValue.isBlank()) {
-        throw new IllegalArgumentException("Missing Authorization header");
-    }
-    if (!authorizationHeaderValue.startsWith(BEARER_PREFIX)) {
-        throw new IllegalArgumentException("Invalid Authorization format (expected: 'Bearer <token>')");
-    }
-    return authorizationHeaderValue.substring(BEARER_PREFIX.length()).trim();
 }
 
 // JwtAuthFilter.java:78-85
@@ -88,172 +119,77 @@ if (header == null || !header.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PR
 final String token = header.substring(BEARER_PREFIX.length()).trim();
 ```
 
-**Problema:**
-- Tres implementaciones casi idénticas
-- Diferencia: manejo de errores (null vs excepción)
-- `BEARER_PREFIX` también está duplicado
-
-**Impacto:** Medio - Dificulta el mantenimiento y genera inconsistencias.
+**Impacto:** Medio - Lógica de seguridad duplicada.
 
 **Solución:**
-Crear clase utilitaria `BearerTokenExtractor` en `autentificacion.util`:
+Crear clase utilitaria dentro del módulo de autenticación:
 
 ```java
+// Crear: autentificacion/util/BearerTokenExtractor.java
 package cl.ufro.dci.naivepayapi.autentificacion.util;
 
 public class BearerTokenExtractor {
+
     private static final String BEARER_PREFIX = "Bearer ";
 
     /**
-     * Extrae token, devuelve null si el header es inválido.
+     * Extrae el token JWT de un header Authorization.
+     *
+     * @param authHeader Header Authorization completo (ej: "Bearer eyJhbGci...")
+     * @return Token JWT sin el prefijo "Bearer ", o null si es inválido
      */
-    public static String extractOrNull(String authHeader) {
+    public static String extract(String authHeader) {
         if (authHeader == null || authHeader.isBlank()) {
             return null;
         }
+
         if (!authHeader.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
             return null;
         }
+
         return authHeader.substring(BEARER_PREFIX.length()).trim();
     }
 
     /**
-     * Extrae token, lanza excepción si el header es inválido.
+     * Verifica si un header contiene un token Bearer válido.
      */
-    public static String extractOrThrow(String authHeader) {
-        String token = extractOrNull(authHeader);
-        if (token == null) {
-            throw new IllegalArgumentException("Invalid or missing Authorization header");
-        }
-        return token;
+    public static boolean isValid(String authHeader) {
+        return extract(authHeader) != null;
     }
 }
 ```
 
-**Archivos a actualizar:**
-- `AuthService.java:323` → usar `BearerTokenExtractor.extractOrNull()`
-- `DeviceTokenUtil.java:49` → usar `BearerTokenExtractor.extractOrThrow()`
-- `JwtAuthFilter.java:78-85` → usar `BearerTokenExtractor.extractOrNull()`
+**Archivos a modificar:**
+- ✅ Crear `autentificacion/util/BearerTokenExtractor.java`
+- ✅ `AuthService.java:323-328` → reemplazar método con `BearerTokenExtractor.extract()`
+- ✅ `JwtAuthFilter.java:78-85` → usar `BearerTokenExtractor.extract()`
+- ✅ Eliminar constante `BEARER_PREFIX` de ambos archivos
 
 ---
 
 ### 3. **Constante `BEARER_PREFIX` duplicada**
 
 **Ubicaciones:**
-1. `AuthService.java:33`
-2. `DeviceTokenUtil.java:23`
-3. `JwtAuthFilter.java:33`
+1. `service/AuthService.java:33`
+2. `configuration/security/JwtAuthFilter.java:33`
 
 **Solución:**
-Se eliminará al consolidar en `BearerTokenExtractor` (ver punto 2).
-
----
-
-### 4. **Método `getAuthenticatedUserId()` duplicado**
-
-**Ubicaciones:**
-1. `DeviceController.java:153-159` → método privado
-2. `AuthUtils.java:28-39` → método `getUserId()` (similar pero con validaciones diferentes)
-
-**Código:**
-```java
-// DeviceController.java:153-159
-private Long getAuthenticatedUserId() {
-    var auth = SecurityContextHolder.getContext().getAuthentication();
-    if (auth == null || auth.getPrincipal() == null) {
-        throw new IllegalStateException("No authenticated user");
-    }
-    return Long.valueOf(auth.getPrincipal().toString());
-}
-
-// AuthUtils.java:28-39
-public static Long getUserId(Authentication auth) {
-    if (auth == null || auth.getName() == null) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "Unable to retrieve userId from authentication context");
-    }
-    try {
-        return Long.parseLong(auth.getName());
-    } catch (NumberFormatException e) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "Invalid userId: " + auth.getName());
-    }
-}
-```
-
-**Impacto:** Bajo - Lógica similar con diferencias en manejo de errores.
-
-**Solución:**
-Unificar en `AuthUtils`:
-```java
-// Agregar método sin parámetros que obtiene auth del contexto
-public static Long getCurrentUserId() {
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    return getUserId(auth);
-}
-```
-
-Luego en `DeviceController.java:153-159`:
-```java
-private Long getAuthenticatedUserId() {
-    return AuthUtils.getCurrentUserId();
-}
-```
-
----
-
-## 🟠 CÓDIGO MUERTO / NO UTILIZADO
-
-### 5. **Métodos no utilizados en `DeviceTokenUtil`**
-
-**Ubicación:** `dispositivos/configuration/DeviceTokenUtil.java`
-
-**Métodos públicos NO utilizados:**
-
-| Método | ¿Se usa? | Líneas |
-|--------|----------|--------|
-| `extractBearerTokenFromHeader()` | ✅ Sí (indirectamente) | 49-57 |
-| `extractBearerTokenFromRequest()` | ✅ Sí (llamado por otros métodos) | 66-68 |
-| `validateTokenNotExpired()` | ❌ No (solo interno) | 76-81 |
-| `extractUserIdFromJwt()` | ⚠️ Interno | 92-100 |
-| `extractUserIdFromRequest()` | ✅ **SÍ** (usado en DeviceController:39, 75) | 109-112 |
-| `extractDeviceFingerprintFromJwt()` | ⚠️ Interno | 123-129 |
-| `extractFingerprintFromHeader()` | ✅ **SÍ** (usado en DeviceController:43, 97, 118) | 138-143 |
-| `resolveDeviceFingerprint()` | ❌ **NO** (nunca usado) | 158-172 |
-| `safeExtractBearerTokenOrNull()` | ⚠️ Interno | 181-187 |
-
-**Dependencias inyectadas NO utilizadas:**
-```java
-private final DeviceRepository deviceRepository;  // ← NUNCA SE USA
-private final PasswordEncoder passwordEncoder;    // ← NUNCA SE USA
-```
-
-**Impacto:** Bajo - Aumenta complejidad sin aportar valor.
-
-**Solución:**
-- **Eliminar** método `resolveDeviceFingerprint()` (líneas 158-172) - no se usa
-- **Eliminar** método `validateTokenNotExpired()` (líneas 76-81) - solo se usa internamente, puede quedar inline
-- **Eliminar** dependencias no utilizadas: `DeviceRepository` y `PasswordEncoder`
-- **Consolidar** extracción de Bearer token en `BearerTokenExtractor` (ver punto 2)
+Se eliminará automáticamente al crear `BearerTokenExtractor` (ver punto 2).
 
 ---
 
 ## 🔵 MEJORAS DE CALIDAD
 
-### 6. **System.out.println en código de producción**
+### 4. **`System.out.println` en código de producción**
 
-**Ubicaciones:**
-1. `JwtAuthFilter.java:146`
-2. `UserRegistrationListener.java` (ubicación exacta pendiente)
-3. `ReportController.java` (ubicación exacta pendiente)
+**Ubicación:** `configuration/security/JwtAuthFilter.java:146`
 
-**Ejemplo:**
+**Código problemático:**
 ```java
-// JwtAuthFilter.java:146
 private boolean isPublic(String uri) {
     for (String pattern : PUBLIC_PATHS) {
         if (PATH_MATCHER.match(pattern, uri)) {
-            System.out.println("Ruta pública detectada: " + uri);  // ← MAL
+            System.out.println("Ruta pública detectada: " + uri);  // ← PROBLEMA
             return true;
         }
     }
@@ -261,112 +197,112 @@ private boolean isPublic(String uri) {
 }
 ```
 
-**Impacto:** Bajo - No se debe usar `System.out` en producción.
+**Impacto:** Bajo - Los logs no se capturan en sistemas de monitoreo.
 
 **Solución:**
 ```java
-// Agregar logger
+// Agregar logger si no existe
 private static final Logger logger = LoggerFactory.getLogger(JwtAuthFilter.class);
 
-// Reemplazar
+// Reemplazar System.out.println
 logger.debug("Ruta pública detectada: {}", uri);
 ```
 
----
-
-### 7. **`AuthUtils` en paquete incorrecto**
-
-**Ubicación:** `reporte/util/AuthUtils.java`
-
-**Problema:**
-- Es una utilidad de autenticación
-- Está en el paquete `reporte.util` (módulo de reportes)
-- Debería estar en `autentificacion.util`
-
-**Impacto:** Bajo - Afecta organización y cohesión del código.
-
-**Solución:**
-- Mover a `cl.ufro.dci.naivepayapi.autentificacion.util.AuthUtils`
-- Actualizar imports en archivos que lo usan
+**Archivos a modificar:**
+- ✅ `JwtAuthFilter.java:146`
 
 ---
 
-### 8. **Métodos helper duplicados en controllers**
+### 5. **Inconsistencia en manejo de excepciones**
 
-**DeviceController.java:141-151 tiene métodos que podrían ser utilitarios:**
+**Ubicación:** `service/AuthService.java:71-74`
 
-```java
-private static String clientIp(HttpServletRequest request) { ... }
-private static boolean isBlank(String s) { ... }  // ← YA IDENTIFICADO EN PUNTO 1
-private static String nullSafe(String s) { ... }
-private static String firstNonBlank(String a, String b) { ... }
-```
+**Análisis:**
+El método `login()` tiene un try-catch que maneja dos tipos de excepciones:
+1. `AuthenticationFailedException` → método `handleAuthenticationFailure()`
+2. `ResponseStatusException` → método `handleResponseStatusException()`
 
-**Impacto:** Bajo - Métodos triviales pero podrían ser reutilizables.
+Ambos métodos hacen logging y retornan `ResponseEntity` con el error.
 
-**Solución (opcional):**
-Si se repiten en otros controllers, moverlos a clase utilitaria `HttpUtils` o `RequestUtils`.
+**Estado:** ✅ Bien implementado - No requiere cambios.
+
+---
+
+### 6. **Documentación de seguridad**
+
+**Observación:** El módulo tiene buena documentación JavaDoc en general, especialmente en:
+- `AccountLockService.java` → excelente documentación
+- `AuthService.java` → bien documentado
+- `JwtAuthFilter.java` → falta documentación de clase
+
+**Sugerencia (opcional):**
+Agregar JavaDoc a la clase `JwtAuthFilter` explicando:
+- Su propósito (validar JWT en cada request)
+- Rutas públicas excluidas
+- Proceso de validación
 
 ---
 
 ## 📋 PLAN DE EJECUCIÓN
 
-### Fase 1: Eliminar Código Muerto (Prioridad Alta) 🟠
+### Fase 1: Crear Utilidades (10 min) 🔧
 
-**1.1. Limpiar DeviceTokenUtil**
-- ✅ Eliminar método `resolveDeviceFingerprint()` (líneas 158-172)
-- ✅ Eliminar método `validateTokenNotExpired()` (líneas 76-81) - hacer inline si se necesita
-- ✅ Eliminar inyección de `DeviceRepository`
-- ✅ Eliminar inyección de `PasswordEncoder`
-- ⏱️ Tiempo estimado: 10 minutos
+**1.1. Crear BearerTokenExtractor**
+```bash
+# Crear directorio si no existe
+mkdir -p naive-pay-api/src/main/java/cl/ufro/dci/naivepayapi/autentificacion/util
 
-**1.2. Eliminar System.out.println**
-- ✅ Reemplazar en `JwtAuthFilter.java:146`
-- ✅ Buscar y reemplazar en `UserRegistrationListener.java`
-- ✅ Buscar y reemplazar en `ReportController.java`
-- ⏱️ Tiempo estimado: 5 minutos
+# Crear clase BearerTokenExtractor.java
+```
 
----
-
-### Fase 2: Consolidar Código Duplicado (Prioridad Media) 🟡
-
-**2.1. Crear `BearerTokenExtractor`**
-- ✅ Crear `autentificacion/util/BearerTokenExtractor.java`
-- ✅ Implementar métodos `extractOrNull()` y `extractOrThrow()`
-- ⏱️ Tiempo estimado: 10 minutos
-
-**2.2. Refactorizar usos de Bearer extraction**
-- ✅ Actualizar `AuthService.java:323` → usar `BearerTokenExtractor`
-- ✅ Actualizar `DeviceTokenUtil.java:49` → usar `BearerTokenExtractor`
-- ✅ Actualizar `JwtAuthFilter.java:78-85` → usar `BearerTokenExtractor`
-- ✅ Eliminar constante `BEARER_PREFIX` de cada archivo
-- ⏱️ Tiempo estimado: 15 minutos
-
-**2.3. Consolidar método `isBlank()`**
-- ✅ Opción A: Usar `org.springframework.util.StringUtils.hasText()`
-  - Reemplazar en `AuthService.java:313-314`
-  - Reemplazar en `LoginRequestValidator.java:79-80`
-  - Reemplazar en `DeviceController.java:149`
-- ⏱️ Tiempo estimado: 10 minutos
-
-**2.4. Consolidar `getAuthenticatedUserId()`**
-- ✅ Agregar método `getCurrentUserId()` en `AuthUtils`
-- ✅ Actualizar `DeviceController.java` para usar `AuthUtils.getCurrentUserId()`
-- ⏱️ Tiempo estimado: 5 minutos
+- ✅ Implementar método `extract(String authHeader)`
+- ✅ Implementar método `isValid(String authHeader)`
+- ✅ Agregar tests unitarios
+- ⏱️ Tiempo: 10 minutos
 
 ---
 
-### Fase 3: Reorganización (Prioridad Baja) 🔵
+### Fase 2: Refactorizar Código Duplicado (25 min) 🔄
 
-**3.1. Mover AuthUtils al paquete correcto**
-- ✅ Mover `reporte/util/AuthUtils.java` → `autentificacion/util/AuthUtils.java`
-- ✅ Actualizar imports en todos los archivos que lo usan
-- ✅ Buscar referencias con grep y actualizar
-- ⏱️ Tiempo estimado: 10 minutos
+**2.1. Consolidar extracción de Bearer Token**
+- ✅ Actualizar `AuthService.java`:
+  - Línea 33: eliminar `BEARER_PREFIX`
+  - Línea 91: cambiar `extractBearer(authHeader)` → `BearerTokenExtractor.extract(authHeader)`
+  - Líneas 323-328: eliminar método `extractBearer()`
 
-**3.2. (Opcional) Crear HttpUtils para helpers de controllers**
-- ⚠️ Solo si se encuentran otros controllers que dupliquen `clientIp()`, `firstNonBlank()`, etc.
-- ⏱️ Tiempo estimado: 15 minutos (si aplica)
+- ✅ Actualizar `JwtAuthFilter.java`:
+  - Línea 33: eliminar `BEARER_PREFIX`
+  - Líneas 78-85: reemplazar lógica inline con `BearerTokenExtractor.extract()`
+
+- ⏱️ Tiempo: 15 minutos
+
+**2.2. Consolidar método isBlank()**
+- ✅ Actualizar `AuthService.java`:
+  - Línea 167: cambiar `isBlank(register.getRegHashedLoginPassword())` → `!StringUtils.hasText(register.getRegHashedLoginPassword())`
+  - Línea 324: cambiar `isBlank(authHeader)` → `!StringUtils.hasText(authHeader)`
+  - Líneas 313-315: eliminar método `isBlank()`
+
+- ✅ Actualizar `LoginRequestValidator.java`:
+  - Línea 50: cambiar `isBlank(identifier)` → `!StringUtils.hasText(identifier)`
+  - Línea 65: cambiar `isBlank(password)` → `!StringUtils.hasText(password)`
+  - Líneas 79-81: eliminar método `isBlank()`
+
+- ⏱️ Tiempo: 10 minutos
+
+---
+
+### Fase 3: Mejoras de Calidad (5 min) ✨
+
+**3.1. Reemplazar System.out.println**
+- ✅ `JwtAuthFilter.java`:
+  - Verificar que existe logger (ya existe en línea ~28)
+  - Línea 146: cambiar `System.out.println(...)` → `logger.debug(...)`
+
+- ⏱️ Tiempo: 2 minutos
+
+**3.2. (Opcional) Agregar JavaDoc a JwtAuthFilter**
+- ⚠️ Agregar documentación de clase
+- ⏱️ Tiempo: 3 minutos
 
 ---
 
@@ -374,120 +310,218 @@ Si se repiten en otros controllers, moverlos a clase utilitaria `HttpUtils` o `R
 
 | Fase | Tareas | Tiempo |
 |------|--------|--------|
-| Fase 1: Código Muerto | 2 tareas | **15 min** |
-| Fase 2: Duplicación | 4 tareas | **40 min** |
-| Fase 3: Reorganización | 1-2 tareas | **10-25 min** |
-| **TOTAL** | 7-8 tareas | **65-80 minutos** |
+| Fase 1: Crear Utilidades | 1 tarea | **10 min** |
+| Fase 2: Refactorizar Duplicación | 2 tareas | **25 min** |
+| Fase 3: Mejoras de Calidad | 1-2 tareas | **5 min** |
+| **TOTAL** | 4-5 tareas | **40 minutos** |
 
 ---
 
-## 🎯 Orden Recomendado de Ejecución
+## 🎯 Orden Recomendado
 
-1. ✅ **Eliminar `System.out.println`** (5 min, bajo riesgo)
-2. ✅ **Limpiar `DeviceTokenUtil`** (10 min, bajo riesgo)
-3. ✅ **Crear `BearerTokenExtractor`** (10 min)
-4. ✅ **Refactorizar usos de Bearer** (15 min)
-5. ✅ **Consolidar `isBlank()`** (10 min)
-6. ✅ **Consolidar `getAuthenticatedUserId()`** (5 min)
-7. ✅ **Mover `AuthUtils` al paquete correcto** (10 min)
-8. ⚠️ **(Opcional) Crear `HttpUtils`** (15 min, si aplica)
+1. ✅ **Crear BearerTokenExtractor** (10 min) - establece la base
+2. ✅ **Refactorizar Bearer extraction** (15 min) - usa la nueva clase
+3. ✅ **Consolidar isBlank()** (10 min) - usa Spring Utils
+4. ✅ **Reemplazar System.out.println** (2 min) - quick win
+5. ⚠️ **(Opcional) JavaDoc** (3 min) - si hay tiempo
 
 ---
 
-## 🧪 Testing Requerido
+## 🧪 Tests Requeridos
 
-### Tests Unitarios:
-- ✅ `BearerTokenExtractor.extractOrNull()` - casos: válido, inválido, null, sin "Bearer"
-- ✅ `BearerTokenExtractor.extractOrThrow()` - verificar excepciones
-- ✅ `AuthUtils.getCurrentUserId()` - verificar extracción desde SecurityContext
+### Tests Unitarios Nuevos:
+```java
+// BearerTokenExtractorTest.java
+@Test
+void extract_validBearerToken_returnsToken() {
+    String token = BearerTokenExtractor.extract("Bearer abc123");
+    assertEquals("abc123", token);
+}
 
-### Tests de Integración:
-- ✅ Login flow completo (verificar que sigue funcionando)
-- ✅ Logout flow (verificar extracción de Bearer token)
-- ✅ Filtro JWT (verificar que las rutas públicas y privadas funcionan)
-- ✅ Device linking (verificar extracción de userId desde token)
+@Test
+void extract_invalidFormat_returnsNull() {
+    assertNull(BearerTokenExtractor.extract("InvalidFormat"));
+    assertNull(BearerTokenExtractor.extract(null));
+    assertNull(BearerTokenExtractor.extract(""));
+}
+
+@Test
+void extract_caseInsensitive_works() {
+    String token = BearerTokenExtractor.extract("bearer abc123");
+    assertEquals("abc123", token);
+}
+
+@Test
+void isValid_validToken_returnsTrue() {
+    assertTrue(BearerTokenExtractor.isValid("Bearer abc123"));
+}
+
+@Test
+void isValid_invalidToken_returnsFalse() {
+    assertFalse(BearerTokenExtractor.isValid(null));
+    assertFalse(BearerTokenExtractor.isValid(""));
+    assertFalse(BearerTokenExtractor.isValid("InvalidFormat"));
+}
+```
 
 ### Tests de Regresión:
-- ✅ Ejecutar suite completa de tests antes y después
-- ✅ Verificar que no hay tests rotos
+- ✅ Ejecutar todos los tests existentes del módulo de autenticación
+- ✅ Verificar que `AuthServiceTest` sigue pasando
+- ✅ Verificar que tests de integración de login/logout funcionan
+- ✅ Verificar que `JwtAuthFilterTest` sigue funcionando (si existe)
 
 ---
 
-## 📊 Métricas de Mejora Esperadas
+## 📊 Métricas de Mejora
 
 | Métrica | Antes | Después | Mejora |
 |---------|-------|---------|--------|
-| Implementaciones de `isBlank()` | 3 | 0 (usa Spring) | -100% |
-| Implementaciones de extracción Bearer | 3 | 1 centralizada | -67% |
-| Líneas de código duplicado | ~40 | ~0 | -100% |
-| System.out.println en producción | 3 | 0 | -100% |
-| Clases con dependencias no utilizadas | 1 | 0 | -100% |
-| Métodos públicos no utilizados | 2 | 0 | -100% |
+| Implementaciones de `isBlank()` | 2 | 0 (usa Spring) | -100% |
+| Implementaciones de extracción Bearer | 2 | 1 centralizada | -50% |
+| Constantes duplicadas `BEARER_PREFIX` | 2 | 1 centralizada | -50% |
+| `System.out.println` en producción | 1 | 0 | -100% |
+| Líneas de código duplicado | ~15 | 0 | -100% |
+| Clases utilitarias en `autentificacion/util` | 0 | 1 | +1 |
 
 ---
 
 ## 📝 Archivos que Serán Modificados
 
-### Archivos a crear:
-- ✅ `autentificacion/util/BearerTokenExtractor.java` (NUEVO)
+### Dentro del módulo `autentificacion`:
 
-### Archivos a modificar:
-- ✅ `AuthService.java` (eliminar `extractBearer()` y `isBlank()`)
-- ✅ `LoginRequestValidator.java` (eliminar `isBlank()`)
-- ✅ `DeviceController.java` (eliminar `isBlank()` y `getAuthenticatedUserId()`)
-- ✅ `DeviceTokenUtil.java` (eliminar métodos no usados y refactor Bearer)
-- ✅ `JwtAuthFilter.java` (refactor extracción Bearer, reemplazar println)
-- ✅ `AuthUtils.java` (mover de `reporte/util` a `autentificacion/util`, agregar `getCurrentUserId()`)
-- ⚠️ `UserRegistrationListener.java` (eliminar println)
-- ⚠️ `ReportController.java` (eliminar println)
-- ⚠️ Todos los archivos que importan `AuthUtils` (actualizar import)
+**Archivos a crear:**
+- ✅ `util/BearerTokenExtractor.java` (NUEVO - ~40 líneas)
+
+**Archivos a modificar:**
+- ✅ `service/AuthService.java`
+  - Eliminar líneas 313-315 (método `isBlank()`)
+  - Eliminar líneas 323-328 (método `extractBearer()`)
+  - Eliminar línea 33 (constante `BEARER_PREFIX`)
+  - Actualizar imports y usos
+  - **Líneas netas:** -20 líneas
+
+- ✅ `service/LoginRequestValidator.java`
+  - Eliminar líneas 79-81 (método `isBlank()`)
+  - Actualizar imports y usos
+  - **Líneas netas:** -3 líneas
+
+- ✅ `configuration/security/JwtAuthFilter.java`
+  - Eliminar línea 33 (constante `BEARER_PREFIX`)
+  - Refactorizar líneas 78-85 (extracción Bearer)
+  - Cambiar línea 146 (System.out → logger)
+  - **Líneas netas:** -5 líneas
+
+**Balance total:**
+- Líneas agregadas: +40 (BearerTokenExtractor)
+- Líneas eliminadas: -28 (código duplicado)
+- **Neto: +12 líneas** (pero código más mantenible y sin duplicación)
 
 ---
 
-## ⚠️ Consideraciones Importantes
+## 📚 Resumen del Análisis
+
+### ✅ Fortalezas del Módulo de Autenticación:
+
+1. **Excelente separación de responsabilidades:**
+   - Servicios bien definidos (Auth, Session, Attempts, Lock, Recovery)
+   - DTOs claros
+   - Repositorios dedicados
+
+2. **Buena gestión de excepciones:**
+   - Excepción custom `AuthenticationFailedException` con información de intentos
+   - Manejo centralizado en `AuthService`
+   - `GlobalExceptionHandler` para respuestas consistentes
+
+3. **Documentación JavaDoc:**
+   - `AccountLockService` → ejemplar
+   - `AuthService` → bien documentado
+   - Métodos complejos tienen explicaciones claras
+
+4. **Seguridad bien implementada:**
+   - Bloqueo automático de cuentas
+   - Tracking de intentos fallidos
+   - Sesiones con expiración
+   - JWT con validación robusta
+
+5. **Logging estructurado:**
+   - Uso de MDC para contexto
+   - Niveles apropiados (debug, info, warn, error)
+   - Mensajes informativos
+
+### ⚠️ Áreas de Mejora Identificadas:
+
+1. **Código duplicado** (menor):
+   - Método `isBlank()` en 2 lugares
+   - Extracción de Bearer token en 2 lugares
+   - Constante duplicada
+
+2. **Uso de System.out** (1 caso):
+   - En `JwtAuthFilter` línea 146
+
+3. **Falta de documentación JavaDoc**:
+   - Clase `JwtAuthFilter` no tiene JavaDoc de clase
+
+### 🚫 No se encontraron:
+
+- ✅ Bugs críticos
+- ✅ Vulnerabilidades de seguridad
+- ✅ Código muerto significativo
+- ✅ Problemas de lógica de negocio
+- ✅ Memory leaks
+- ✅ Problemas de performance
+
+---
+
+## 🔐 Notas de Seguridad
+
+**El módulo implementa correctamente:**
+
+1. ✅ **Autenticación multi-factor implícita**
+   - Usuario + contraseña + dispositivo autorizado
+
+2. ✅ **Rate limiting por intentos fallidos**
+   - Máximo 5 intentos en ventana de 30 minutos
+   - Bloqueo automático de cuenta
+
+3. ✅ **Gestión de sesiones segura**
+   - JWT con expiración (15 minutos)
+   - Session tracking en BD
+   - Cierre automático de sesiones expiradas
+
+4. ✅ **Recuperación de contraseña segura**
+   - Códigos de 6 dígitos
+   - Expiración de 10 minutos
+   - Invalidación de códigos previos
+
+5. ✅ **Validación de dispositivos**
+   - Fingerprint hasheado con BCrypt
+   - One-device-per-user policy
+   - Tracking de cambios de dispositivo
+
+---
+
+## ⚠️ Consideraciones de Deployment
 
 ### Compatibilidad:
-- ✅ Cambios son **backward compatible** (solo refactorización interna)
-- ✅ No afectan APIs públicas ni contratos de endpoints
-- ✅ No requieren cambios en el frontend
+- ✅ Cambios son **backward compatible**
+- ✅ No afectan contratos de API
+- ✅ No requieren cambios en frontend
+- ✅ No requieren migraciones de BD
 
 ### Deployment:
 - ✅ Puede hacerse sin downtime
-- ✅ No requiere migraciones de base de datos
-- ✅ No requiere invalidar sesiones activas
+- ✅ No invalida sesiones existentes
+- ✅ No requiere restart de servicios dependientes
 
 ### Rollback:
-- ✅ Fácil rollback con git revert (cambios son independientes)
-- ✅ Cada fase puede comitearse por separado
+- ✅ Fácil rollback con `git revert`
+- ✅ Cada cambio puede comitearse independientemente
+- ✅ Sin dependencias entre fases
 
 ---
 
-## 📚 Resumen de Hallazgos
-
-### ✅ Código que funciona bien:
-- Sistema de sesiones (AuthSessionService)
-- Manejo de intentos fallidos (AccountLockService.handleFailedAuthentication)
-- Validación de dispositivos (DeviceService)
-- Estructura de excepciones (AuthenticationFailedException)
-- Recuperación de contraseñas (PasswordRecoveryService)
-- Manejo de MDC para logging estructurado
-
-### ⚠️ Áreas de mejora identificadas:
-- Duplicación de utilidades comunes (isBlank, extractBearer)
-- Uso de System.out.println en lugar de logger
-- Dependencias inyectadas pero no utilizadas
-- Métodos públicos que nunca se llaman
-- Organización de paquetes (AuthUtils en paquete incorrecto)
-
-### 🚫 No se encontraron:
-- ✅ Bugs críticos
-- ✅ Vulnerabilidades de seguridad evidentes
-- ✅ Problemas de lógica de negocio
-- ✅ Memory leaks o problemas de performance
-
----
-
-**Autor:** Claude (Análisis automatizado)
+**Autor:** Claude
 **Fecha:** 2025-11-15
-**Versión:** 2.0 (Actualizado con código sin roles)
+**Versión:** 3.0 (Solo módulo autenticación)
 **Rama:** `claude/naive-pay-session-management-011CUz6ywdvoZ94taKQNBQHP`
+**Alcance:** `cl.ufro.dci.naivepayapi.autentificacion` únicamente
