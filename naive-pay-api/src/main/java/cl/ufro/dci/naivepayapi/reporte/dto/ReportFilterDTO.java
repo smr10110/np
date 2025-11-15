@@ -1,6 +1,6 @@
 package cl.ufro.dci.naivepayapi.reporte.dto;
 
-import cl.ufro.dci.naivepayapi.pagos.domain.PaymentTransactionStatus;
+import cl.ufro.dci.naivepayapi.fondos.domain.TransactionStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -21,7 +21,7 @@ public class ReportFilterDTO {
     private LocalDateTime endDate;
 
     /** Transaction status to filter by. */
-    private PaymentTransactionStatus status;
+    private TransactionStatus status;
 
     /** Exact commerce name to filter by. */
     private String commerce;
@@ -59,12 +59,12 @@ public class ReportFilterDTO {
     }
 
     /** @return transaction status. */
-    public PaymentTransactionStatus getStatus() {
+    public TransactionStatus getStatus() {
         return status;
     }
 
     /** @param status transaction status. */
-    public void setStatus(PaymentTransactionStatus status) {
+    public void setStatus(TransactionStatus status) {
         this.status = status;
     }
 

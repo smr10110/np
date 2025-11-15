@@ -1,139 +1,170 @@
-<div class="analisis-content">
-    <div *ngIf="loading">Loading…</div>
-    <p *ngIf="error" style="color:red">Error: {{ error }}</p>
+<div class="analysis-content">
+    @if (loading) {
+        <div>Cargando…</div>
+    }
+    @if (error) {
+        <p style="color:red">Error: {{ error }}</p>
+    }
 
-    <div class="promedios-row">
-        <!-- Caja de Gastos -->
-        <div class="promedio-card gastos-card">
+    <!-- Monthly averages row -->
+    <div class="averages-row">
+        <!-- Monthly expenses average box -->
+        <div class="average-card expenses-card">
             <span class="label">Promedio mensual de gastos</span>
-            <span class="monto">{{ getAvgMensual() !== undefined ? (getAvgMensual() | number:'1.0-0') : 0 }}</span>
+            <span class="amount">{{ getMonthlyAverageExpenses() !== undefined ? (getMonthlyAverageExpenses() | number:'1.0-0') : 0 }}</span>
         </div>
-        <!-- Caja de Ingresos -->
-        <div class="promedio-card ingresos-card">
+        <!-- Monthly income average box -->
+        <div class="average-card income-card">
             <span class="label">Promedio mensual de ingresos</span>
-            <span class="monto">{{ getAvgMensualIngresos() !== undefined ? (getAvgMensualIngresos() | number:'1.0-0') : 0 }}</span>
+            <span class="amount">{{ getMonthlyAverageIncome() !== undefined ? (getMonthlyAverageIncome() | number:'1.0-0') : 0 }}</span>
         </div>
     </div>
 
-    <!-- Pestañas -->
+    <!-- Tabs -->
     <div class="tabs">
-        <button [class.active]="selectedTab === 'gastos'" (click)="setTab('gastos')">Gastos</button>
-        <button [class.active]="selectedTab === 'ingresos'" (click)="setTab('ingresos')">Ingresos</button>
+        <button [class.active]="selectedTab === 'expenses'" (click)="setTab('expenses')">Gastos</button>
+        <button [class.active]="selectedTab === 'income'" (click)="setTab('income')">Ingresos</button>
         <button [class.active]="selectedTab === 'total'" (click)="setTab('total')">Total</button>
     </div>
 
-    <!-- Gráficos según pestaña con acordeón -->
-    <ng-container [ngSwitch]="selectedTab">
-        <!-- Gastos -->
-        <div *ngSwitchCase="'gastos'">
-            <div class="acordeon">
-                <button class="acordeon-btn" (click)="showCat = !showCat">
-                    <span>Por Categoría</span>
-                    <span>{{ showCat ? '▲' : '▼' }}</span>
-                </button>
-                <div *ngIf="showCat">
-                    <apx-chart
-                        *ngIf="categoryChartOptions"
-                        [series]="categoryChartOptions.series"
-                        [chart]="categoryChartOptions.chart"
-                        [xaxis]="categoryChartOptions.xaxis"
-                        [title]="categoryChartOptions.title"
-                        [dataLabels]="categoryChartOptions.dataLabels"
-                        [tooltip]="categoryChartOptions.tooltip">
-                    </apx-chart>
+    <!-- Charts by tab with accordion -->
+    @switch (selectedTab) {
+        <!-- Expenses -->
+        @case ('expenses') {
+            <div>
+                <div class="accordion">
+                    <button class="accordion-btn" (click)="showCategory = !showCategory">
+                        <span>Por Categoría</span>
+                        <span>{{ showCategory ? '▲' : '▼' }}</span>
+                    </button>
+                    @if (showCategory) {
+                        <div>
+                            @if (categoryChartOptions) {
+                                <apx-chart
+                                        [series]="categoryChartOptions.series"
+                                        [chart]="categoryChartOptions.chart"
+                                        [xaxis]="categoryChartOptions.xaxis"
+                                        [title]="categoryChartOptions.title"
+                                        [dataLabels]="categoryChartOptions.dataLabels"
+                                        [tooltip]="categoryChartOptions.tooltip">
+                                </apx-chart>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="accordion">
+                    <button class="accordion-btn" (click)="showCommerce = !showCommerce">
+                        <span>Por Comercio</span>
+                        <span>{{ showCommerce ? '▲' : '▼' }}</span>
+                    </button>
+                    @if (showCommerce) {
+                        <div>
+                            @if (commerceChartOptions) {
+                                <apx-chart
+                                        [series]="commerceChartOptions.series"
+                                        [chart]="commerceChartOptions.chart"
+                                        [xaxis]="commerceChartOptions.xaxis"
+                                        [title]="commerceChartOptions.title"
+                                        [dataLabels]="commerceChartOptions.dataLabels"
+                                        [tooltip]="commerceChartOptions.tooltip">
+                                </apx-chart>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="accordion">
+                    <button class="accordion-btn" (click)="showDate = !showDate">
+                        <span>Por Fecha</span>
+                        <span>{{ showDate ? '▲' : '▼' }}</span>
+                    </button>
+                    @if (showDate) {
+                        <div>
+                            @if (dateChartOptions) {
+                                <apx-chart
+                                        [series]="dateChartOptions.series"
+                                        [chart]="dateChartOptions.chart"
+                                        [xaxis]="dateChartOptions.xaxis"
+                                        [title]="dateChartOptions.title"
+                                        [dataLabels]="dateChartOptions.dataLabels"
+                                        [tooltip]="dateChartOptions.tooltip">
+                                </apx-chart>
+                            }
+                        </div>
+                    }
                 </div>
             </div>
-            <div class="acordeon">
-                <button class="acordeon-btn" (click)="showCom = !showCom">
-                    <span>Por Comercio</span>
-                    <span>{{ showCom ? '▲' : '▼' }}</span>
-                </button>
-                <div *ngIf="showCom">
-                    <apx-chart
-                        *ngIf="comercioChartOptions"
-                        [series]="comercioChartOptions.series"
-                        [chart]="comercioChartOptions.chart"
-                        [xaxis]="comercioChartOptions.xaxis"
-                        [title]="comercioChartOptions.title"
-                        [dataLabels]="comercioChartOptions.dataLabels"
-                        [tooltip]="comercioChartOptions.tooltip">
-                    </apx-chart>
+        }
+
+        <!-- Income -->
+        @case ('income') {
+            <div>
+                <div class="accordion">
+                    <button class="accordion-btn" (click)="showCategory = !showCategory">
+                        <span>Por Descripción</span>
+                        <span>{{ showCategory ? '▲' : '▼' }}</span>
+                    </button>
+                    @if (showCategory) {
+                        <div>
+                            @if (categoryChartOptions) {
+                                <apx-chart
+                                        [series]="categoryChartOptions.series"
+                                        [chart]="categoryChartOptions.chart"
+                                        [xaxis]="categoryChartOptions.xaxis"
+                                        [title]="categoryChartOptions.title"
+                                        [dataLabels]="categoryChartOptions.dataLabels"
+                                        [tooltip]="categoryChartOptions.tooltip">
+                                </apx-chart>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="accordion">
+                    <button class="accordion-btn" (click)="showDate = !showDate">
+                        <span>Por Fecha</span>
+                        <span>{{ showDate ? '▲' : '▼' }}</span>
+                    </button>
+                    @if (showDate) {
+                        <div>
+                            @if (dateChartOptions) {
+                                <apx-chart
+                                        [series]="dateChartOptions.series"
+                                        [chart]="dateChartOptions.chart"
+                                        [xaxis]="dateChartOptions.xaxis"
+                                        [title]="dateChartOptions.title"
+                                        [dataLabels]="dateChartOptions.dataLabels"
+                                        [tooltip]="dateChartOptions.tooltip">
+                                </apx-chart>
+                            }
+                        </div>
+                    }
                 </div>
             </div>
-            <div class="acordeon">
-                <button class="acordeon-btn" (click)="showDate = !showDate">
-                    <span>Por Fecha</span>
-                    <span>{{ showDate ? '▲' : '▼' }}</span>
-                </button>
-                <div *ngIf="showDate">
-                    <apx-chart
-                        *ngIf="dateChartOptions"
-                        [series]="dateChartOptions.series"
-                        [chart]="dateChartOptions.chart"
-                        [xaxis]="dateChartOptions.xaxis"
-                        [title]="dateChartOptions.title"
-                        [dataLabels]="dateChartOptions.dataLabels"
-                        [tooltip]="dateChartOptions.tooltip">
-                    </apx-chart>
-                </div>
-            </div>
-        </div>
-        <!-- Ingresos -->
-        <div *ngSwitchCase="'ingresos'">
-            <div class="acordeon">
-                <button class="acordeon-btn" (click)="showCat = !showCat">
-                    <span>Por Descripción</span>
-                    <span>{{ showCat ? '▲' : '▼' }}</span>
-                </button>
-                <div *ngIf="showCat">
-                    <apx-chart
-                        *ngIf="categoryChartOptions"
-                        [series]="categoryChartOptions.series"
-                        [chart]="categoryChartOptions.chart"
-                        [xaxis]="categoryChartOptions.xaxis"
-                        [title]="categoryChartOptions.title"
-                        [dataLabels]="categoryChartOptions.dataLabels"
-                        [tooltip]="categoryChartOptions.tooltip">
-                    </apx-chart>
-                </div>
-            </div>
-            <div class="acordeon">
-                <button class="acordeon-btn" (click)="showDate = !showDate">
-                    <span>Por Fecha</span>
-                    <span>{{ showDate ? '▲' : '▼' }}</span>
-                </button>
-                <div *ngIf="showDate">
-                    <apx-chart
-                        *ngIf="dateChartOptions"
-                        [series]="dateChartOptions.series"
-                        [chart]="dateChartOptions.chart"
-                        [xaxis]="dateChartOptions.xaxis"
-                        [title]="dateChartOptions.title"
-                        [dataLabels]="dateChartOptions.dataLabels"
-                        [tooltip]="dateChartOptions.tooltip">
-                    </apx-chart>
-                </div>
-            </div>
-        </div>
+        }
+
         <!-- Total -->
-        <div *ngSwitchCase="'total'">
-            <div class="acordeon">
-                <button class="acordeon-btn" (click)="showComp = !showComp">
-                    <span>Comparativo Ingreso/Gasto</span>
-                    <span>{{ showComp ? '▲' : '▼' }}</span>
-                </button>
-                <div *ngIf="showComp">
-                    <apx-chart
-                        *ngIf="comparativoChartOptions"
-                        [series]="comparativoChartOptions.series"
-                        [chart]="comparativoChartOptions.chart"
-                        [xaxis]="comparativoChartOptions.xaxis"
-                        [title]="comparativoChartOptions.title"
-                        [dataLabels]="comparativoChartOptions.dataLabels"
-                        [tooltip]="comparativoChartOptions.tooltip">
-                    </apx-chart>
+        @case ('total') {
+            <div>
+                <div class="accordion">
+                    <button class="accordion-btn" (click)="showComparative = !showComparative">
+                        <span>Comparativo Ingreso/Gasto</span>
+                        <span>{{ showComparative ? '▲' : '▼' }}</span>
+                    </button>
+                    @if (showComparative) {
+                        <div>
+                            @if (comparativeChartOptions) {
+                                <apx-chart
+                                        [series]="comparativeChartOptions.series"
+                                        [chart]="comparativeChartOptions.chart"
+                                        [xaxis]="comparativeChartOptions.xaxis"
+                                        [title]="comparativeChartOptions.title"
+                                        [dataLabels]="comparativeChartOptions.dataLabels"
+                                        [tooltip]="comparativeChartOptions.tooltip">
+                                </apx-chart>
+                            }
+                        </div>
+                    }
                 </div>
             </div>
-        </div>
-    </ng-container>
+        }
+    }
 </div>

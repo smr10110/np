@@ -1,7 +1,7 @@
 package cl.ufro.dci.naivepayapi.reporte.service;
 
-import cl.ufro.dci.naivepayapi.pagos.domain.PaymentTransaction;
 import cl.ufro.dci.naivepayapi.reporte.dto.ReportFilterDTO;
+import cl.ufro.dci.naivepayapi.reporte.dto.TransactionDTO;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  * </ul>
  *
  * @see ReportService
- * @see PaymentTransaction
+ * @see TransactionDTO
  * @since 1.0
  */
 @Service
@@ -61,7 +61,7 @@ public class UsageTrends {
      * <ol>
      *   <li>Fetch transactions by {@code userId} and {@code filter} from
      *       {@link ReportService}.</li>
-     *   <li>Group by month of creation ({@link PaymentTransaction#getCreatedAt()}).</li>
+     *   <li>Group by month of creation ({@link TransactionDTO#traDateTime()} ).</li>
      *   <li>Sum the amounts per month using {@link BigDecimal}.</li>
      *   <li>Divide the grand total by the number of months that have transactions,
      *       rounding to 2 decimals with {@link RoundingMode#HALF_UP}.</li>
@@ -71,7 +71,7 @@ public class UsageTrends {
      * <ul>
      *   <li>If no transactions exist, returns {@code 0.0}.</li>
      *   <li>Only months that actually have at least one transaction are counted.</li>
-     *   <li>If any transaction has {@code getAmount() == null}, it is implicitly
+     *   <li>If any transaction has {@code traAmount() == null}, it is implicitly
      *       ignored by using the reduction identity {@code BigDecimal.ZERO}.</li>
      * </ul>
      *
@@ -89,14 +89,14 @@ public class UsageTrends {
      */
     public double averageMonthlySpent(Long userId, ReportFilterDTO filter) {
 
-        List<PaymentTransaction> tx = reportService.getFilteredTransactions(filter, userId);
+        List<TransactionDTO> tx = reportService.getFilteredTransactions(filter, userId);
 
         if (tx.isEmpty()) return 0.0;
 
         Map<YearMonth, BigDecimal> totalsPerMonth = tx.stream()
                 .collect(Collectors.groupingBy(
-                        t -> YearMonth.from(t.getCreatedAt()),
-                        Collectors.reducing(BigDecimal.ZERO, PaymentTransaction::getAmount, BigDecimal::add)
+                        t -> YearMonth.from(t.traDateTime),
+                        Collectors.reducing(BigDecimal.ZERO, t -> t.traAmount, BigDecimal::add)
                 ));
 
         BigDecimal grandTotal = totalsPerMonth.values().stream()

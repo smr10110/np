@@ -1,14 +1,14 @@
 package cl.ufro.dci.naivepayapi.fondos.service;
 
 import cl.ufro.dci.naivepayapi.fondos.domain.Account;
-import cl.ufro.dci.naivepayapi.fondos.domain.FundTransaction;
+import cl.ufro.dci.naivepayapi.fondos.domain.Transaction;
 import cl.ufro.dci.naivepayapi.fondos.domain.TransactionType;
 import cl.ufro.dci.naivepayapi.fondos.domain.TransactionStatus;
 import cl.ufro.dci.naivepayapi.fondos.dto.TransactionResponse;
 import cl.ufro.dci.naivepayapi.fondos.dto.TransferRequest;
 import cl.ufro.dci.naivepayapi.fondos.dto.TransferResponse;
 import cl.ufro.dci.naivepayapi.fondos.dto.PendingPaymentResponse;
-import cl.ufro.dci.naivepayapi.fondos.repository.FundTransactionRepository;
+import cl.ufro.dci.naivepayapi.fondos.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,14 +45,14 @@ import java.util.stream.Collectors;
  * @author NaivePay Development Team
  * @version 1.0
  * @since 2025-10-06
- * @see FundTransaction
+ * @see Transaction
  * @see TransactionType
  * @see AccountService
  */
 @Service
 public class TransactionService {
 
-    private final FundTransactionRepository fundTransactionRepository;
+    private final TransactionRepository fundTransactionRepository;
     private final AccountService accountService;
 
     /**
@@ -61,7 +61,7 @@ public class TransactionService {
      * @param fundTransactionRepository the transaction repository
      * @param accountService the account management service
      */
-    public TransactionService(FundTransactionRepository fundTransactionRepository, AccountService accountService) {
+    public TransactionService(TransactionRepository fundTransactionRepository, AccountService accountService) {
         this.fundTransactionRepository = fundTransactionRepository;
         this.accountService = accountService;
     }
@@ -103,24 +103,24 @@ public class TransactionService {
             Account destinationAccount = accountService.getAccountById(request.getDestinationAccountId());
 
             // Validate not same account
-            if (originAccount.getId().equals(destinationAccount.getId())) {
+            if (originAccount.getAccId().equals(destinationAccount.getAccId())) {
                 return TransferResponse.error("Cannot transfer to the same account");
             }
 
             // Validate sufficient balance
-            if (originAccount.getAvailableBalance().compareTo(request.getAmount()) < 0) {
+            if (originAccount.getAccAvailableBalance().compareTo(request.getAmount()) < 0) {
                 return TransferResponse.error("Insufficient balance");
             }
 
             // Update balances
-            BigDecimal newOriginBalance = originAccount.getAvailableBalance().subtract(request.getAmount());
-            BigDecimal newDestinationBalance = destinationAccount.getAvailableBalance().add(request.getAmount());
+            BigDecimal newOriginBalance = originAccount.getAccAvailableBalance().subtract(request.getAmount());
+            BigDecimal newDestinationBalance = destinationAccount.getAccAvailableBalance().add(request.getAmount());
 
             accountService.updateAccountBalance(originAccount, newOriginBalance);
             accountService.updateAccountBalance(destinationAccount, newDestinationBalance);
 
             // Create transaction record
-            FundTransaction transaction = new FundTransaction(
+            Transaction transaction = new Transaction(
                     request.getAmount(),
                     LocalDateTime.now(),
                     request.getDescription() != null ? request.getDescription() : "Transfer",
@@ -129,9 +129,9 @@ public class TransactionService {
                     destinationAccount
             );
 
-            FundTransaction savedTransaction = fundTransactionRepository.save(transaction);
+            Transaction savedTransaction = fundTransactionRepository.save(transaction);
 
-            return TransferResponse.success(savedTransaction.getId());
+            return TransferResponse.success(savedTransaction.getTraId());
 
         } catch (IllegalArgumentException e) {
             return TransferResponse.error(e.getMessage());
@@ -178,11 +178,11 @@ public class TransactionService {
             Account systemAccount = accountService.getOrCreateSystemAccount();
 
             // Update user balance
-            BigDecimal newBalance = userAccount.getAvailableBalance().add(amount);
+            BigDecimal newBalance = userAccount.getAccAvailableBalance().add(amount);
             accountService.updateAccountBalance(userAccount, newBalance);
 
             // Create LOAD type transaction record
-            FundTransaction transaction = new FundTransaction(
+            Transaction transaction = new Transaction(
                     amount,
                     LocalDateTime.now(),
                     "Balance load",
@@ -191,9 +191,9 @@ public class TransactionService {
                     userAccount
             );
 
-            FundTransaction savedTransaction = fundTransactionRepository.save(transaction);
+            Transaction savedTransaction = fundTransactionRepository.save(transaction);
 
-            return TransferResponse.success(savedTransaction.getId());
+            return TransferResponse.success(savedTransaction.getTraId());
 
         } catch (IllegalArgumentException e) {
             return TransferResponse.error(e.getMessage());
@@ -238,19 +238,19 @@ public class TransactionService {
             Account commerceAccount = accountService.getAccountById(commerceAccountId);
 
             // Validate sufficient balance
-            if (userAccount.getAvailableBalance().compareTo(amount) < 0) {
+            if (userAccount.getAccAvailableBalance().compareTo(amount) < 0) {
                 return TransferResponse.error("Insufficient balance");
             }
 
             // Update balances
-            BigDecimal newUserBalance = userAccount.getAvailableBalance().subtract(amount);
-            BigDecimal newCommerceBalance = commerceAccount.getAvailableBalance().add(amount);
+            BigDecimal newUserBalance = userAccount.getAccAvailableBalance().subtract(amount);
+            BigDecimal newCommerceBalance = commerceAccount.getAccAvailableBalance().add(amount);
 
             accountService.updateAccountBalance(userAccount, newUserBalance);
             accountService.updateAccountBalance(commerceAccount, newCommerceBalance);
 
             // Create PAYMENT type transaction record
-            FundTransaction transaction = new FundTransaction(
+            Transaction transaction = new Transaction(
                     amount,
                     LocalDateTime.now(),
                     description != null ? description : "Payment to commerce",
@@ -259,9 +259,9 @@ public class TransactionService {
                     commerceAccount
             );
 
-            FundTransaction savedTransaction = fundTransactionRepository.save(transaction);
+            Transaction savedTransaction = fundTransactionRepository.save(transaction);
 
-            return TransferResponse.success(savedTransaction.getId());
+            return TransferResponse.success(savedTransaction.getTraId());
 
         } catch (IllegalArgumentException e) {
             return TransferResponse.error(e.getMessage());
@@ -293,8 +293,8 @@ public class TransactionService {
     public List<TransactionResponse> getTransactionHistory(Long userId) {
         Account account = accountService.getAccountByUserId(userId);
         
-        List<FundTransaction> transactions = fundTransactionRepository
-                .findByOriginAccountOrDestinationAccountOrderByDateTimeDesc(account, account);
+        List<Transaction> transactions = fundTransactionRepository
+                .findByAccIdOriginOrAccIdDestinationOrderByTraDateTimeDesc(account, account);
 
         return transactions.stream()
                 .map(this::mapToTransactionResponse)
@@ -314,7 +314,7 @@ public class TransactionService {
      */
     @Transactional(readOnly = true)
     public TransactionResponse getTransactionById(Long transactionId) {
-        FundTransaction transaction = fundTransactionRepository.findById(transactionId)
+        Transaction transaction = fundTransactionRepository.findById(transactionId)
                 .orElseThrow(() -> new IllegalArgumentException("No transaction exists with ID: " + transactionId));
 
         return mapToTransactionResponse(transaction);
@@ -340,7 +340,7 @@ public class TransactionService {
     public boolean validateBalance(Long accountId, BigDecimal amount) {
         try {
             Account account = accountService.getAccountById(accountId);
-            return account.getAvailableBalance().compareTo(amount) >= 0;
+            return account.getAccAvailableBalance().compareTo(amount) >= 0;
         } catch (IllegalArgumentException e) {
             return false;
         }
@@ -381,7 +381,7 @@ public class TransactionService {
     }
 
     /**
-     * Converts a FundTransaction entity to a response DTO.
+     * Converts a Transaction entity to a response DTO.
      * <p>
      * Private helper method that performs the mapping avoiding
      * lazy loading issues by exposing only the IDs of related accounts.
@@ -397,15 +397,20 @@ public class TransactionService {
      * @param transaction the entity to convert
      * @return a {@link TransactionResponse} object with the relevant data
      */
-    private TransactionResponse mapToTransactionResponse(FundTransaction transaction) {
-        return new TransactionResponse(
-                transaction.getId(),
-                transaction.getAmount(),
-                transaction.getDateTime(),
-                transaction.getDescription(),
-                transaction.getOriginAccount() != null ? transaction.getOriginAccount().getId() : null,
-                transaction.getDestinationAccount() != null ? transaction.getDestinationAccount().getId() : null
-        );
+    private TransactionResponse mapToTransactionResponse(Transaction transaction) {
+        TransactionResponse response = new TransactionResponse();
+        response.setId(transaction.getTraId());
+        response.setAmount(transaction.getTraAmount());
+        response.setDateTime(transaction.getTraDateTime());
+        response.setDescription(transaction.getTraDescription());
+        response.setOriginAccountId(transaction.getAccIdOrigin() != null ? transaction.getAccIdOrigin().getAccId() : null);
+        response.setDestinationAccountId(transaction.getAccIdDestination() != null ? transaction.getAccIdDestination().getAccId() : null);
+        response.setType(transaction.getTraType() != null ? transaction.getTraType().name() : null);
+        response.setStatus(transaction.getTraStatus() != null ? transaction.getTraStatus().name() : null);
+        response.setCustomerName(transaction.getTraCustomerName());
+        response.setCommerceName(transaction.getTraCommerceName());
+        response.setPaymentCategory(transaction.getTraPaymentCategory());
+        return response;
     }
 
     /**
@@ -453,12 +458,12 @@ public class TransactionService {
             Account destinationAccount = accountService.getAccountById(destinationAccountId);
 
             // Validate not same account
-            if (originAccount.getId().equals(destinationAccount.getId())) {
+            if (originAccount.getAccId().equals(destinationAccount.getAccId())) {
                 return TransferResponse.error("Cannot transfer to the same account");
             }
 
             // Create PENDING transaction (NO balance modification yet)
-            FundTransaction transaction = new FundTransaction(
+            Transaction transaction = new Transaction(
                     amount,
                     LocalDateTime.now(),
                     description != null ? description : "Payment to " + commerceName,
@@ -471,9 +476,9 @@ public class TransactionService {
                     TransactionStatus.PENDING
             );
 
-            FundTransaction savedTransaction = fundTransactionRepository.save(transaction);
+            Transaction savedTransaction = fundTransactionRepository.save(transaction);
 
-            return TransferResponse.success(savedTransaction.getId());
+            return TransferResponse.success(savedTransaction.getTraId());
 
         } catch (IllegalArgumentException e) {
             return TransferResponse.error(e.getMessage());
@@ -510,43 +515,43 @@ public class TransactionService {
     public TransferResponse approvePendingPayment(Long transactionId) {
         try {
             // Find pending transaction
-            FundTransaction pendingTransaction = fundTransactionRepository.findById(transactionId)
+            Transaction pendingTransaction = fundTransactionRepository.findById(transactionId)
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found with ID: " + transactionId));
 
             // Validate it is pending
-            if (pendingTransaction.getStatus() != TransactionStatus.PENDING ||
-                pendingTransaction.getType() != TransactionType.PAYMENT_PENDING) {
+            if (pendingTransaction.getTraStatus() != TransactionStatus.PENDING ||
+                pendingTransaction.getTraType() != TransactionType.PAYMENT_PENDING) {
                 return TransferResponse.error("Transaction is not pending approval");
             }
 
             // Get accounts
-            Account originAccount = pendingTransaction.getOriginAccount();
-            Account destinationAccount = pendingTransaction.getDestinationAccount();
+            Account originAccount = pendingTransaction.getAccIdOrigin();
+            Account destinationAccount = pendingTransaction.getAccIdDestination();
 
             // Validate sufficient balance
-            if (originAccount.getAvailableBalance().compareTo(pendingTransaction.getAmount()) < 0) {
+            if (originAccount.getAccAvailableBalance().compareTo(pendingTransaction.getTraAmount()) < 0) {
                 // Mark as rejected
-                pendingTransaction.setType(TransactionType.PAYMENT_REJECTED);
-                pendingTransaction.setStatus(TransactionStatus.REJECTED);
+                pendingTransaction.setTraType(TransactionType.PAYMENT_REJECTED);
+                pendingTransaction.setTraStatus(TransactionStatus.REJECTED);
                 fundTransactionRepository.save(pendingTransaction);
                 return TransferResponse.error("Insufficient balance - Payment rejected");
             }
 
             // Execute transfer
-            BigDecimal newOriginBalance = originAccount.getAvailableBalance()
-                    .subtract(pendingTransaction.getAmount());
-            BigDecimal newDestinationBalance = destinationAccount.getAvailableBalance()
-                    .add(pendingTransaction.getAmount());
+            BigDecimal newOriginBalance = originAccount.getAccAvailableBalance()
+                    .subtract(pendingTransaction.getTraAmount());
+            BigDecimal newDestinationBalance = destinationAccount.getAccAvailableBalance()
+                    .add(pendingTransaction.getTraAmount());
 
             accountService.updateAccountBalance(originAccount, newOriginBalance);
             accountService.updateAccountBalance(destinationAccount, newDestinationBalance);
 
             // Update transaction to approved
-            pendingTransaction.setType(TransactionType.PAYMENT);
-            pendingTransaction.setStatus(TransactionStatus.COMPLETED);
-            FundTransaction approvedTransaction = fundTransactionRepository.save(pendingTransaction);
+            pendingTransaction.setTraType(TransactionType.PAYMENT);
+            pendingTransaction.setTraStatus(TransactionStatus.COMPLETED);
+            Transaction approvedTransaction = fundTransactionRepository.save(pendingTransaction);
 
-            return TransferResponse.success(approvedTransaction.getId());
+            return TransferResponse.success(approvedTransaction.getTraId());
 
         } catch (IllegalArgumentException e) {
             return TransferResponse.error(e.getMessage());
@@ -576,16 +581,16 @@ public class TransactionService {
     @Transactional
     public TransferResponse cancelPendingPayment(Long transactionId) {
         try {
-            FundTransaction pendingTransaction = fundTransactionRepository.findById(transactionId)
+            Transaction pendingTransaction = fundTransactionRepository.findById(transactionId)
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found with ID: " + transactionId));
 
-            if (pendingTransaction.getStatus() != TransactionStatus.PENDING) {
+            if (pendingTransaction.getTraStatus() != TransactionStatus.PENDING) {
                 return TransferResponse.error("Transaction is not pending - cannot cancel");
             }
 
             // Mark as canceled
-            pendingTransaction.setType(TransactionType.PAYMENT_CANCELED);
-            pendingTransaction.setStatus(TransactionStatus.CANCELED);
+            pendingTransaction.setTraType(TransactionType.PAYMENT_CANCELED);
+            pendingTransaction.setTraStatus(TransactionStatus.CANCELED);
             fundTransactionRepository.save(pendingTransaction);
 
             return TransferResponse.success(transactionId);
@@ -613,18 +618,18 @@ public class TransactionService {
     @Transactional
     public TransferResponse rejectPendingPayment(Long transactionId, String reason) {
         try {
-            FundTransaction pendingTransaction = fundTransactionRepository.findById(transactionId)
+            Transaction pendingTransaction = fundTransactionRepository.findById(transactionId)
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found with ID: " + transactionId));
 
-            if (pendingTransaction.getStatus() != TransactionStatus.PENDING) {
+            if (pendingTransaction.getTraStatus() != TransactionStatus.PENDING) {
                 return TransferResponse.error("Transaction is not pending - cannot reject");
             }
 
             // Mark as rejected
-            pendingTransaction.setType(TransactionType.PAYMENT_REJECTED);
-            pendingTransaction.setStatus(TransactionStatus.REJECTED);
+            pendingTransaction.setTraType(TransactionType.PAYMENT_REJECTED);
+            pendingTransaction.setTraStatus(TransactionStatus.REJECTED);
             if (reason != null && !reason.isEmpty()) {
-                pendingTransaction.setDescription(pendingTransaction.getDescription() + " [Rejected: " + reason + "]");
+                pendingTransaction.setTraDescription(pendingTransaction.getTraDescription() + " [Rejected: " + reason + "]");
             }
             fundTransactionRepository.save(pendingTransaction);
 
@@ -649,10 +654,39 @@ public class TransactionService {
      */
     @Transactional(readOnly = true)
     public List<PendingPaymentResponse> getPendingPayments() {
-        List<FundTransaction> pending = fundTransactionRepository
-                .findByTypeAndStatusOrderByDateTimeDesc(TransactionType.PAYMENT_PENDING, TransactionStatus.PENDING);
+        List<Transaction> pending = fundTransactionRepository
+                .findByTraTypeAndTraStatusOrderByTraDateTimeDesc(TransactionType.PAYMENT_PENDING, TransactionStatus.PENDING);
         
         return pending.stream()
+                .map(this::mapToPendingPaymentResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Gets pending payments for a specific account (WHERE user is the DESTINATION/owner).
+     * <p>
+     * **OWNERSHIP MODEL**: Returns payments where the specified user is the DESTINATION,
+     * meaning they are the commerce/receiver who must approve or reject the payment.
+     * </p>
+     * <p>
+     * This is the correct method for showing "Pagos Pendientes" in the UI,
+     * as it only shows payments that THIS user has authority to approve/reject.
+     * </p>
+     * 
+     * @param accountId ID of the destination account (commerce receiving payment)
+     * @return List of pending payments TO that account (awaiting approval)
+     * @since 2.0
+     */
+    @Transactional(readOnly = true)
+    public List<PendingPaymentResponse> getPendingPaymentsByDestinationAccount(Long accountId) {
+        Account account = accountService.getAccountById(accountId);
+        
+        List<Transaction> pending = fundTransactionRepository
+                .findByTraTypeAndTraStatusOrderByTraDateTimeDesc(TransactionType.PAYMENT_PENDING, TransactionStatus.PENDING);
+        
+        // Filter by DESTINATION (ownership): User can only approve payments TO them
+        return pending.stream()
+                .filter(t -> t.getAccIdDestination().getAccId().equals(account.getAccId()))
                 .map(this::mapToPendingPaymentResponse)
                 .collect(Collectors.toList());
     }
@@ -666,16 +700,19 @@ public class TransactionService {
      * @param accountId ID of the origin account
      * @return List of pending payments from that account
      * @since 2.0
+     * @deprecated Use {@link #getPendingPaymentsByDestinationAccount(Long)} for approval workflow.
+     *             This method shows outgoing payments (origin), not incoming (destination).
      */
+    @Deprecated
     @Transactional(readOnly = true)
     public List<PendingPaymentResponse> getPendingPaymentsByAccount(Long accountId) {
         Account account = accountService.getAccountById(accountId);
         
-        List<FundTransaction> pending = fundTransactionRepository
-                .findByTypeAndStatusOrderByDateTimeDesc(TransactionType.PAYMENT_PENDING, TransactionStatus.PENDING);
+        List<Transaction> pending = fundTransactionRepository
+                .findByTraTypeAndTraStatusOrderByTraDateTimeDesc(TransactionType.PAYMENT_PENDING, TransactionStatus.PENDING);
         
         return pending.stream()
-                .filter(t -> t.getOriginAccount().getId().equals(account.getId()))
+                .filter(t -> t.getAccIdOrigin().getAccId().equals(account.getAccId()))
                 .map(this::mapToPendingPaymentResponse)
                 .collect(Collectors.toList());
     }
@@ -695,8 +732,8 @@ public class TransactionService {
     public List<TransactionResponse> getExtendedTransactionHistory(Long userId) {
         Account account = accountService.getAccountByUserId(userId);
         
-        List<FundTransaction> transactions = fundTransactionRepository
-                .findByOriginAccountOrDestinationAccountOrderByDateTimeDesc(account, account);
+        List<Transaction> transactions = fundTransactionRepository
+                .findByAccIdOriginOrAccIdDestinationOrderByTraDateTimeDesc(account, account);
 
         return transactions.stream()
                 .map(this::mapToExtendedTransactionResponse)
@@ -704,7 +741,7 @@ public class TransactionService {
     }
 
     /**
-     * Converts a FundTransaction to PendingPaymentResponse.
+     * Converts a Transaction to PendingPaymentResponse.
      * <p>
      * Maps transaction entity to a DTO specific for pending payments
      * with extended information (customer, commerce, category).
@@ -714,23 +751,23 @@ public class TransactionService {
      * @return PendingPaymentResponse DTO
      * @since 2.0
      */
-    private PendingPaymentResponse mapToPendingPaymentResponse(FundTransaction transaction) {
+    private PendingPaymentResponse mapToPendingPaymentResponse(Transaction transaction) {
         return new PendingPaymentResponse(
-                transaction.getId(),
-                transaction.getAmount(),
-                transaction.getCommerceName(),
-                transaction.getCustomerName(),
-                transaction.getPaymentCategory(),
-                transaction.getDescription(),
-                transaction.getDateTime(),
-                transaction.getStatus(),
-                transaction.getOriginAccount() != null ? transaction.getOriginAccount().getId() : null,
-                transaction.getDestinationAccount() != null ? transaction.getDestinationAccount().getId() : null
+                transaction.getTraId(),
+                transaction.getTraAmount(),
+                transaction.getTraCommerceName(),
+                transaction.getTraCustomerName(),
+                transaction.getTraPaymentCategory(),
+                transaction.getTraDescription(),
+                transaction.getTraDateTime(),
+                transaction.getTraStatus(),
+                transaction.getAccIdOrigin() != null ? transaction.getAccIdOrigin().getAccId() : null,
+                transaction.getAccIdDestination() != null ? transaction.getAccIdDestination().getAccId() : null
         );
     }
 
     /**
-     * Converts FundTransaction to extended TransactionResponse.
+     * Converts Transaction to extended TransactionResponse.
      * <p>
      * Includes additional fields for transactions with approval workflow.
      * </p>
@@ -739,22 +776,21 @@ public class TransactionService {
      * @return Extended TransactionResponse DTO
      * @since 2.0
      */
-    private TransactionResponse mapToExtendedTransactionResponse(FundTransaction transaction) {
-        TransactionResponse response = new TransactionResponse(
-                transaction.getId(),
-                transaction.getAmount(),
-                transaction.getDateTime(),
-                transaction.getDescription(),
-                transaction.getOriginAccount() != null ? transaction.getOriginAccount().getId() : null,
-                transaction.getDestinationAccount() != null ? transaction.getDestinationAccount().getId() : null
-        );
+    private TransactionResponse mapToExtendedTransactionResponse(Transaction transaction) {
+        TransactionResponse response = new TransactionResponse();
+        response.setId(transaction.getTraId());
+        response.setAmount(transaction.getTraAmount());
+        response.setDateTime(transaction.getTraDateTime());
+        response.setDescription(transaction.getTraDescription());
+        response.setOriginAccountId(transaction.getAccIdOrigin() != null ? transaction.getAccIdOrigin().getAccId() : null);
+        response.setDestinationAccountId(transaction.getAccIdDestination() != null ? transaction.getAccIdDestination().getAccId() : null);
         
         // Add extended fields if available
-        response.setType(transaction.getType().name());
-        response.setStatus(transaction.getStatus() != null ? transaction.getStatus().name() : null);
-        response.setCustomerName(transaction.getCustomerName());
-        response.setCommerceName(transaction.getCommerceName());
-        response.setPaymentCategory(transaction.getPaymentCategory());
+        response.setType(transaction.getTraType().name());
+        response.setStatus(transaction.getTraStatus() != null ? transaction.getTraStatus().name() : null);
+        response.setCustomerName(transaction.getTraCustomerName());
+        response.setCommerceName(transaction.getTraCommerceName());
+        response.setPaymentCategory(transaction.getTraPaymentCategory());
         
         return response;
     }

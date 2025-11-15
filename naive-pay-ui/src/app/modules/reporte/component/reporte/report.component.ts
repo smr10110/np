@@ -2,8 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
-import { ReporteService } from '../../service/reporte.service';
-import { ReportFilterDTO, SpendingReport, Transaction } from '../../domain/reporte';
+import { ReportService } from '../../service/report.service';
+import { ReportFilterDTO, SpendingReport, Transaction } from '../../domain/report';
 
 import { AnalisisComponent } from '../analisis/analisis.component';
 import { ReportTableComponent } from '../report-table/report-table.component';
@@ -20,13 +20,13 @@ type UiTxFilter = {
 
 @Component({
     standalone: true,
-    selector: 'app-reporte',
-    templateUrl: './reporte.component.html',
-    styleUrls: ['./reporte.component.css'],
+    selector: 'app-report',
+    templateUrl: './report.component.html',
+    styleUrls: ['./report.component.css'],
     imports: [CommonModule, FormsModule, AnalisisComponent, ReportTableComponent],
 })
-export class ReporteComponent implements OnInit {
-    availableStatuses = ['', 'PENDING', 'APPROVED', 'CANCELED', 'REJECTED'];
+export class ReportComponent implements OnInit {
+    availableStatuses: string[] = ['', 'PENDING', 'COMPLETED', 'CANCELED', 'REJECTED'];
     filter: ReportFilterDTO = {};
 
     report?: SpendingReport;
@@ -35,7 +35,7 @@ export class ReporteComponent implements OnInit {
     loading = false;
     error = '';
 
-    activeTab: 'reportes' | 'analisis' = 'reportes';
+    activeTab: 'reports' | 'analysis' = 'reports';
     fromDate: string = '';
     toDate: string = '';
 
@@ -43,7 +43,7 @@ export class ReporteComponent implements OnInit {
 
     isAdminMode: boolean = false;
 
-    // Paginación
+    // Pagination
     pageSize: number = 25;
     currentPage: number = 1;
     get totalPages(): number {
@@ -69,7 +69,7 @@ export class ReporteComponent implements OnInit {
         }
     }
 
-    constructor(private reporteService: ReporteService) {}
+    constructor(private reportService: ReportService) {}
 
     ngOnInit(): void {
         this.setDefaultDates();
@@ -88,16 +88,25 @@ export class ReporteComponent implements OnInit {
         this.txs = [];
         this.report = undefined;
         this.avg = undefined;
+        this.error = ''; // Clear previous errors
 
         this.loadTransactions();
-        this.loadReport();
-        this.loadMonthlyAverage();
+        // Load report and average only if not in admin mode
+        // or if in admin mode but filtering is done on the backend
+        if (!this.isAdminMode || !this.userId) {
+            this.loadReport();
+            this.loadMonthlyAverage();
+        } else {
+            // In admin mode, also load report and average with userId
+            this.loadReport();
+            this.loadMonthlyAverage();
+        }
     }
 
     loadReport() {
         this.loading = true;
         this.error = '';
-        this.reporteService
+        this.reportService
             .buildSpending(this.filter, 'COMMERCE', 'DAY')
             .subscribe({
                 next: (r) => {
@@ -105,7 +114,8 @@ export class ReporteComponent implements OnInit {
                     this.loading = false;
                 },
                 error: (e) => {
-                    this.error = this.msg(e);
+                    // Do not set error here, only log
+                    console.error('Error loading report:', e);
                     this.loading = false;
                 },
             });
@@ -115,16 +125,14 @@ export class ReporteComponent implements OnInit {
         this.loading = true;
         this.error = '';
         let filterToUse = { ...this.filter };
-        if (this.isAdminMode && this.userId) {
-            (filterToUse as any).userId = this.userId.trim();
-        }
-        this.reporteService.avgMonthly(filterToUse).subscribe({
+        this.reportService.avgMonthly(filterToUse).subscribe({
             next: (r) => {
                 this.avg = r;
                 this.loading = false;
             },
             error: (e) => {
-                this.error = this.msg(e);
+                // Do not set error here, only log
+                console.error('Error loading monthly average:', e);
                 this.loading = false;
             },
         });
@@ -132,21 +140,29 @@ export class ReporteComponent implements OnInit {
 
     applyFilters(
         from: string, to: string, status: string, commerce: string,
-        description: string, minAmount: string, maxAmount: string, userId?: string
+        description: string, minAmount: string, maxAmount: string, userId?: string | number
     ) {
         const uiFilters: UiTxFilter = {
             from: from,
             to: to,
-            status: status.trim(),
-            commerce: commerce.trim(),
-            description: description.trim(),
+            status: status?.trim(),
+            commerce: commerce?.trim(),
+            description: description?.trim(),
             minAmount: minAmount ? parseFloat(minAmount) : undefined,
             maxAmount: maxAmount ? parseFloat(maxAmount) : undefined,
         };
-        if (this.isAdminMode && userId) {
-            (uiFilters as any).userId = userId.trim();
-            this.userId = userId.trim();
+        if (this.isAdminMode) {
+            // In admin mode, always pass userId (can be undefined to see all)
+            if (userId) {
+                (uiFilters as any).userId = String(userId).trim();
+                this.userId = String(userId).trim();
+            } else {
+                // In admin mode without userId, pass null to get all transactions
+                (uiFilters as any).userId = null;
+                this.userId = '';
+            }
         } else {
+            // Normal user mode, do not pass userId
             this.userId = '';
         }
         this.filter = this.applyUiFiltersToDto(uiFilters);
@@ -177,30 +193,12 @@ export class ReporteComponent implements OnInit {
         this.loading = true;
         this.error = '';
 
-        this.reporteService.listTransactions(this.filter).subscribe({
+        this.reportService.listTransactions(this.filter).subscribe({
             next: (r) => {
-                if (this.isAdminMode && this.userId) {
-                    const userIdStr = this.userId.toString().trim().toLowerCase();
-                    this.txs = r
-                        .filter(tx => {
-                            const origin = tx.originAccount?.toString().trim().toLowerCase();
-                            const dest = tx.destinationAccount?.toString().trim().toLowerCase();
-                            // Solo incluir si userId es origen o destino, pero no ambos
-                            return (origin === userIdStr && dest !== userIdStr) || (dest === userIdStr && origin !== userIdStr);
-                        })
-                        .map(tx => {
-                            const origin = tx.originAccount?.toString().trim().toLowerCase();
-                            const dest = tx.destinationAccount?.toString().trim().toLowerCase();
-                            let type: 'ingreso' | 'gasto' = 'gasto';
-                            if (dest === userIdStr && origin !== userIdStr) type = 'ingreso';
-                            if (origin === userIdStr && dest !== userIdStr) type = 'gasto';
-                            return { ...tx, type };
-                        });
-                    this.updateAvgMonthlyValue();
-                } else {
-                    this.txs = r.map(tx => ({ ...tx }));
-                    this.updateAvgMonthlyValue();
-                }
+                // In admin mode with userId, filtering is already done on the backend
+                // Just store the results without additional frontend filtering
+                this.txs = r.map(tx => ({ ...tx }));
+                this.updateAvgMonthlyValue();
                 this.loading = false;
             },
             error: (e) => {
@@ -220,27 +218,27 @@ export class ReporteComponent implements OnInit {
     avgMonthly = { value: undefined as number | undefined };
 
     updateAvgMonthlyValue() {
-        console.log('Datos filtrados:', JSON.stringify(this.filteredTxs, null, 2));
+        console.log('Filtered data:', JSON.stringify(this.filteredTxs, null, 2));
         const totalTxs = this.filteredTxs.length;
-        const gastos = this.filteredTxs.filter(tx => tx.amount < 0);
-        console.log('Gastos detectados:', JSON.stringify(gastos, null, 2));
-        const totalGastos = gastos.length;
-        console.log('Transacciones filtradas:', totalTxs, 'Gastos encontrados:', totalGastos);
+        const expenses = this.filteredTxs.filter(tx => tx.traAmount < 0);
+        console.log('Detected expenses:', JSON.stringify(expenses, null, 2));
+        const totalExpenses = expenses.length;
+        console.log('Filtered transactions:', totalTxs, 'Found expenses:', totalExpenses);
         if (totalTxs === 0) {
             this.avgMonthly.value = undefined;
-            console.log('Promedio mensual: sin transacciones');
+            console.log('Monthly average: no transactions');
             return;
         }
-        if (totalGastos === 0) {
+        if (totalExpenses === 0) {
             this.avgMonthly.value = undefined;
-            console.log('Promedio mensual: sin gastos');
+            console.log('Monthly average: no expenses');
             return;
         }
-        // Agrupar por mes usando createdAt
-        const meses = new Set(gastos.map(tx => tx.createdAt.substring(0,7))); // yyyy-MM
-        const sumaGastos = gastos.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-        this.avgMonthly.value = meses.size > 0 ? sumaGastos / meses.size : undefined;
-        console.log('Promedio mensual calculado:', this.avgMonthly.value, 'Meses:', Array.from(meses), 'Total gastos:', sumaGastos);
+        // Group by month using traDateTime
+        const months = new Set(expenses.map(tx => tx.traDateTime.substring(0,7))); // yyyy-MM
+        const totalExpenseAmount = expenses.reduce((sum, tx) => sum + Math.abs(tx.traAmount), 0);
+        this.avgMonthly.value = months.size > 0 ? totalExpenseAmount / months.size : undefined;
+        console.log('Calculated monthly average:', this.avgMonthly.value, 'Months:', Array.from(months), 'Total expenses:', totalExpenseAmount);
     }
 
     private applyUiFiltersToDto(f?: UiTxFilter): ReportFilterDTO {
@@ -252,7 +250,8 @@ export class ReporteComponent implements OnInit {
         if (f?.commerce) patch.commerce = f.commerce;
         if (typeof f?.minAmount === 'number') patch.minAmount = f.minAmount;
         if (typeof f?.maxAmount === 'number') patch.maxAmount = f.maxAmount;
-        if (this.isAdminMode && (f as any).userId) patch.userId = (f as any).userId;
+        // Only add userId if present in filter
+        if ((f as any).userId) patch.userId = (f as any).userId;
         return patch as ReportFilterDTO;
     }
 
@@ -263,16 +262,12 @@ export class ReporteComponent implements OnInit {
         return `${yyyyMmDd}T23:59:59`;
     }
 
-    keys(obj: Record<string, number> | undefined | null) {
-        return Object.keys(obj ?? {});
-    }
-
     private msg(e: any) {
         return e?.error?.message || e?.message || 'Error';
     }
 
     downloadCsv() {
-        this.reporteService.downloadCsv(this.filter).subscribe({
+        this.reportService.downloadCsv(this.filter).subscribe({
             next: (blob) => {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -284,14 +279,10 @@ export class ReporteComponent implements OnInit {
                 window.URL.revokeObjectURL(url);
             },
             error: (err) => {
-                this.error = 'Error descargando CSV';
+                this.error = 'Error downloading CSV';
                 console.error(err);
             },
         });
-    }
-
-    get filteredReport(): SpendingReport | undefined {
-        return this.report;
     }
 
     get filteredTxs(): Transaction[] {

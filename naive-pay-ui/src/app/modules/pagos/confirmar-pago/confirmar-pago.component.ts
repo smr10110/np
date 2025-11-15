@@ -61,26 +61,29 @@ export default class ConfirmarPagoComponent implements OnInit {
     this.error = '';
 
     this.pagosService.approveTransaction(this.transaction.id).subscribe({
-      next: (updatedTransaction) => {
+      next: (response) => {
         this.processing = false;
         
-        // ✅ CHECK UPDATED STATUS
-        if (updatedTransaction.status === 'APPROVED') {
+        if (response.success) {
           alert('Payment confirmed successfully!');
-          this.router.navigate(['/pagos/exitoso', updatedTransaction.id]);
-        } else if (updatedTransaction.status === 'REJECTED') {
-          this.error = 'Payment rejected: Insufficient funds';
-          // Update local transaction to reflect the change
-          this.transaction = updatedTransaction;
+          this.router.navigate(['/pagos/exitoso', response.transactionId]);
         } else {
-          this.error = 'Unexpected transaction status: ' + updatedTransaction.status;
-          this.transaction = updatedTransaction;
+          this.error = response.message || 'Payment approval failed';
         }
       },
       error: (error) => {
+        console.error('Error approving payment:', error);
         this.processing = false;
-        this.error = 'Error confirming payment';
-        console.error('Error:', error);
+        
+        // Check if it's an authentication error
+        if (error.status === 401) {
+          this.error = 'Session expired. Please login again.';
+          setTimeout(() => {
+            this.router.navigate(['/auth/login']);
+          }, 2000);
+        } else {
+          this.error = error.error?.message || 'Error confirming payment. Please try again.';
+        }
       }
     });
   }
@@ -91,14 +94,25 @@ export default class ConfirmarPagoComponent implements OnInit {
     this.processing = true;
     
     this.pagosService.cancelTransaction(this.transaction.id).subscribe({
-      next: (transaction) => {
+      next: (response) => {
         this.processing = false;
-        alert('Transaction cancelled');
-        this.router.navigate(['/pagos']);
+        if (response.success) {
+          alert('Transaction cancelled');
+          this.router.navigate(['/pagos']);
+        } else {
+          this.error = response.message || 'Cancellation failed';
+        }
       },
       error: (error) => {
         this.processing = false;
-        this.error = 'Error cancelling transaction';
+        if (error.status === 401) {
+          this.error = 'Session expired. Please login again.';
+          setTimeout(() => {
+            this.router.navigate(['/auth/login']);
+          }, 2000);
+        } else {
+          this.error = error.error?.message || 'Error cancelling transaction';
+        }
         console.error('Error:', error);
       }
     });

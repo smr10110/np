@@ -1,6 +1,7 @@
 package cl.ufro.dci.naivepayapi.autentificacion.service;
 
 import cl.ufro.dci.naivepayapi.autentificacion.domain.AuthAttempt;
+import cl.ufro.dci.naivepayapi.autentificacion.domain.enums.AuthAttemptReason;
 import cl.ufro.dci.naivepayapi.autentificacion.repository.AuthAttemptRepository;
 import cl.ufro.dci.naivepayapi.registro.domain.AccountState;
 import cl.ufro.dci.naivepayapi.registro.domain.Register;
@@ -57,6 +58,8 @@ public class AccountLockService {
     private final AuthAttemptRepository authAttemptRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final cl.ufro.dci.naivepayapi.dispositivos.service.DeviceService deviceService;
+    private final AuthAttemptService authAttemptService;
 
     /**
      * Verifica si una cuenta está bloqueada.
@@ -176,6 +179,69 @@ public class AccountLockService {
         logAccountBlocked(user);
 
         return true;
+    }
+
+    /**
+     * Calcula los intentos de login restantes antes del bloqueo de cuenta.
+     *
+     * <p>Este método calcula cuántos intentos fallidos más puede tener el usuario
+     * antes de que su cuenta sea bloqueada automáticamente. El cálculo considera:
+     * <ul>
+     *   <li>La ventana temporal configurada (lockoutWindowMinutes)</li>
+     *   <li>El último intento exitoso del usuario (para reiniciar el contador)</li>
+     *   <li>El número máximo de intentos permitidos (maxFailedAttempts)</li>
+     * </ul>
+     *
+     * @param user Usuario para el cual calcular intentos restantes
+     * @return Número de intentos restantes (0-maxFailedAttempts)
+     */
+    public int calculateRemainingAttempts(User user) {
+        if (user == null) {
+            logger.debug("calculateRemainingAttempts llamado con usuario nulo");
+            return 0;
+        }
+
+        // Calcular ventana temporal: ahora - N minutos
+        Instant windowStart = Instant.now().minus(lockoutWindowMinutes, ChronoUnit.MINUTES);
+
+        // Obtener último intento exitoso del usuario
+        Instant lastSuccess = authAttemptRepository.findLastSuccessAt(user.getUseId());
+
+        // Reiniciar desde el último éxito de login (o lockoutWindowMinutes atrás, lo que sea más reciente)
+        Instant since = (lastSuccess != null && lastSuccess.isAfter(windowStart))
+                ? lastSuccess
+                : windowStart;
+
+        // Contar intentos fallidos desde la fecha calculada
+        long failedCount = authAttemptRepository.countFailedAttemptsSince(user.getUseId(), since);
+
+        // Calcular intentos restantes
+        int remaining = Math.max(0, maxFailedAttempts - (int) failedCount);
+
+        logger.debug("Intentos restantes calculados | userId={} | failedCount={} | remaining={}",
+                user.getUseId(), failedCount, remaining);
+
+        return remaining;
+    }
+
+    /**
+     * Registra un intento fallido obteniendo automáticamente el dispositivo del usuario.
+     *
+     * <p>Este método busca el dispositivo asociado al usuario y registra el intento
+     * fallido con la razón especificada. Si el usuario no tiene dispositivo asociado,
+     * no se registra ningún intento.
+     *
+     * @param user Usuario que falló la autenticación
+     * @param reason Razón del fallo (ej: BAD_CREDENTIALS, ACCOUNT_BLOCKED, DEVICE_UNAUTHORIZED)
+     */
+    public void logFailedAttempt(User user, AuthAttemptReason reason) {
+        if (user == null) {
+            logger.debug("No se puede registrar intento fallido: usuario nulo");
+            return;
+        }
+
+        deviceService.findByUserId(user.getUseId())
+                .ifPresent(dev -> authAttemptService.log(dev, false, reason));
     }
 
     /**

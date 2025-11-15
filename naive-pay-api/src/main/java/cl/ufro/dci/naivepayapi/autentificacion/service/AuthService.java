@@ -13,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,12 +31,6 @@ public class AuthService {
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
     private static final String BEARER_PREFIX = "Bearer ";
 
-    @Value("${naivepay.security.max-failed-attempts:5}")
-    private int maxFailedAttempts;
-
-    @Value("${naivepay.security.lockout-window-minutes:30}")
-    private int lockoutWindowMinutes;
-
     private final JWTService jwtService;
     private final AuthAttemptService authAttemptService;
     private final UserRepository userRepo;
@@ -45,104 +38,55 @@ public class AuthService {
     private final AuthSessionService authSessionService;
     private final DeviceService deviceService;
     private final AccountLockService accountLockService;
+    private final LoginRequestValidator loginRequestValidator;
 
     // =========================== LOGIN ===========================
     public ResponseEntity<?> login(LoginRequest req, String deviceFingerprint) {
-        MDC.put("identifier", req.getIdentifier());
-        MDC.put("deviceFingerprint", deviceFingerprint != null ? deviceFingerprint : "N/A");
+        setupLoginMDC(req.getIdentifier(), deviceFingerprint);
 
         try {
             logger.debug("Intento de login recibido | identifier={}", req.getIdentifier());
 
-            // Validación mínima de entrada
-            if (isBlank(req.getIdentifier()) || isBlank(req.getPassword())) {
-                logger.warn("Login rechazado: credenciales incompletas");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", AuthAttemptReason.BAD_CREDENTIALS.name()));
-            }
+            // 1) Validar request
+            loginRequestValidator.validate(req);
 
-            // 1) Resolver usuario por email o RUT
-            Optional<User> userOpt = resolveUser(req.getIdentifier());
-            if (userOpt.isEmpty()) {
-                logger.warn("Login rechazado: usuario no encontrado | identifier={}", req.getIdentifier());
-                // No podemos registrar el intento porque no hay user ni device
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", AuthAttemptReason.USER_NOT_FOUND.name()));
-            }
-            User user = userOpt.get();
+            // 2) Encontrar usuario
+            User user = findUserByIdentifier(req.getIdentifier());
+            addUserToMDC(user);
 
-            MDC.put("userId", String.valueOf(user.getUseId()));
-            MDC.put("email", user.getRegister().getRegEmail());
+            // 3) Verificar que cuenta no esté bloqueada
+            validateAccountNotLocked(user);
 
-            // 2) Verificar si la cuenta está bloqueada
-            if (accountLockService.isAccountLocked(user)) {
-                logger.warn("Login rechazado: cuenta bloqueada | userId={} | email={}",
-                        user.getUseId(), user.getRegister().getRegEmail());
-                logFailedAttempt(user, AuthAttemptReason.ACCOUNT_BLOCKED);
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", AuthAttemptReason.ACCOUNT_BLOCKED.name()));
-            }
+            // 4) Validar contraseña
+            validatePassword(user, req.getPassword());
 
-            // 3) Verificar contraseña
-            if (!isValidPassword(user, req.getPassword())) {
-                logger.warn("Login rechazado: credenciales inválidas | userId={}", user.getUseId());
-
-                // Si no tiene device, no podemos registrar el intento ni mostrar contador
-                // Simplemente retornamos error genérico de credenciales incorrectas
-                if (deviceService.findByUserId(user.getUseId()).isEmpty()) {
-                    logger.debug("Usuario sin device, retornando error genérico | userId={}", user.getUseId());
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                            .body(Map.of("error", AuthAttemptReason.BAD_CREDENTIALS.name()));
-                }
-
-                // Con device: registrar intento y mostrar contador
-                logFailedAttempt(user, AuthAttemptReason.BAD_CREDENTIALS);
-
-                // Verificar y bloquear cuenta si es necesario después de fallo
-                boolean wasBlocked = accountLockService.checkAndBlockIfNeeded(user);
-
-                // Si ya quedó bloqueada, responder 403 inmediatamente
-                if (wasBlocked) {
-                    logger.warn("Cuenta bloqueada automáticamente tras intento fallido | userId={}", user.getUseId());
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", AuthAttemptReason.ACCOUNT_BLOCKED.name()));
-                }
-
-                // Calcular intentos restantes
-                int remainingAttempts = calculateRemainingAttempts(user);
-                logger.debug("Intentos restantes: {} | userId={}", remainingAttempts, user.getUseId());
-
-                if (remainingAttempts == 0) {
-                    logger.warn("Bloqueando cuenta: intentos agotados | userId={}", user.getUseId());
-                    accountLockService.blockAccount(user);
-                    logFailedAttempt(user, AuthAttemptReason.ACCOUNT_BLOCKED);
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", AuthAttemptReason.ACCOUNT_BLOCKED.name()));
-                }
-
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of(
-                                "error", AuthAttemptReason.BAD_CREDENTIALS.name(),
-                                "remainingAttempts", remainingAttempts
-                        ));
-            }
-
-            // 4) Crear sesión autenticada con token y dispositivo autorizado
+            // 5) Crear sesión autenticada
             try {
                 LoginResponse response = createAuthenticatedSession(user, deviceFingerprint);
                 logger.info("Login exitoso | userId={} | email={} | jti={}",
-                        user.getUseId(), user.getRegister().getRegEmail(), response.getJti());
+                    user.getUseId(), user.getRegister().getRegEmail(), response.getJti());
                 return ResponseEntity.ok(response);
             } catch (ResponseStatusException ex) {
                 logger.warn("Login rechazado: error de autorización de dispositivo | userId={} | reason={}",
                         user.getUseId(), ex.getReason());
                 return handleDeviceAuthorizationError(user, ex);
             }
+
+        } catch (ResponseStatusException ex) {
+            // Manejar excepción con remainingAttempts
+            String reason = ex.getReason();
+            if (reason != null && reason.contains("|remainingAttempts=")) {
+                String[] parts = reason.split("\\|remainingAttempts=");
+                int remainingAttempts = Integer.parseInt(parts[1]);
+                return ResponseEntity.status(ex.getStatusCode())
+                        .body(Map.of(
+                                "error", parts[0],
+                                "remainingAttempts", remainingAttempts
+                        ));
+            }
+
         } finally {
-            MDC.remove("identifier");
-            MDC.remove("deviceFingerprint");
-            MDC.remove("userId");
-            MDC.remove("email");
+            clearLoginMDC();
         }
     }
 
@@ -156,33 +100,137 @@ public class AuthService {
      *         o error de autenticación (401) si el token es inválido o falta
      */
     public ResponseEntity<Map<String, Object>> logout(String authHeader) {
+        logger.debug("Solicitud de logout recibida");
+        String token = extractBearer(authHeader);
+
         try {
-            logger.debug("Solicitud de logout recibida");
+            UUID jti = UUID.fromString(jwtService.getJti(token));
+            MDC.put("jti", jti.toString());
 
-            String token = extractBearer(authHeader);
-            if (token == null) {
-                logger.warn("Logout rechazado: token ausente o inválido");
-                return unauthorizedLogout();
-            }
+            authSessionService.closeByJti(jti);
 
-            try {
-                UUID jti = UUID.fromString(jwtService.getJti(token));
-                MDC.put("jti", jti.toString());
-
-                authSessionService.closeByJti(jti);
-
-                logger.info("Logout exitoso | jti={}", jti);
-                return ResponseEntity.ok(Map.of("message", "Sesión cerrada", "jti", jti));
-            } catch (JwtException | IllegalArgumentException ex) {
-                logger.warn("Logout rechazado: token JWT inválido | error={}", ex.getMessage());
-                return unauthorizedLogout();
-            } finally {
-                MDC.remove("jti");
-            }
-        } catch (Exception ex) {
-            logger.error("Error inesperado durante logout | error={}", ex.getMessage(), ex);
-            return unauthorizedLogout();
+            logger.info("Logout exitoso | jti={}", jti);
+            return ResponseEntity.ok(Map.of("message", "Sesión cerrada", "jti", jti));
+        } catch (JwtException | IllegalArgumentException ex) {
+            logger.warn("Logout rechazado: token JWT inválido | error={}", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "UNAUTHORIZED"));
+        } finally {
+            MDC.remove("jti");
         }
+    }
+
+    // ----------------- Validation Methods -----------------
+
+    /**
+     * Busca un usuario por su identificador (email o RUT).
+     *
+     * @param identifier Email o RUT del usuario
+     * @return Usuario encontrado
+     * @throws ResponseStatusException si el usuario no existe
+     */
+    User findUserByIdentifier(String identifier) {
+        return resolveUser(identifier)
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                AuthAttemptReason.USER_NOT_FOUND.name()
+            ));
+    }
+
+    /**
+     * Valida que la cuenta del usuario no esté bloqueada.
+     *
+     * @param user Usuario a validar
+     * @throws ResponseStatusException si la cuenta está bloqueada
+     */
+    void validateAccountNotLocked(User user) {
+        if (accountLockService.isAccountLocked(user)) {
+            logger.warn("Login rechazado: cuenta bloqueada | userId={} | email={}",
+                user.getUseId(), user.getRegister().getRegEmail());
+            accountLockService.logFailedAttempt(user, AuthAttemptReason.ACCOUNT_BLOCKED);
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                AuthAttemptReason.ACCOUNT_BLOCKED.name()
+            );
+        }
+    }
+
+
+    /** Valida que la contraseña proporcionada coincida con la almacenada en el registro del usuario. */
+    private boolean isValidPassword(User user, String rawPassword) {
+        var register = user.getRegister();
+
+        if (register == null || isBlank(register.getRegHashedLoginPassword())) {
+            return false;
+        }
+
+        return passwordEncoder.matches(rawPassword, register.getRegHashedLoginPassword());
+    }
+
+    /**
+     * Valida la contraseña del usuario y maneja el fallo si es incorrecta.
+     *
+     * @param user Usuario a autenticar
+     * @param password Contraseña en texto plano
+     * @throws ResponseStatusException si la contraseña es incorrecta
+     */
+    void validatePassword(User user, String password) {
+        if (!isValidPassword(user, password)) {
+            handlePasswordFailure(user);
+        }
+    }
+
+    /**
+     * Maneja el fallo de validación de contraseña registrando intentos y verificando bloqueos.
+     *
+     * @param user Usuario que falló la autenticación
+     * @throws ResponseStatusException con información de intentos restantes o bloqueo
+     */
+    private void handlePasswordFailure(User user) {
+        logger.warn("Login rechazado: credenciales inválidas | userId={}", user.getUseId());
+
+        // Si no tiene device, no podemos registrar el intento ni mostrar contador
+        if (deviceService.findByUserId(user.getUseId()).isEmpty()) {
+            logger.debug("Usuario sin device, retornando error genérico | userId={}", user.getUseId());
+            throw new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                AuthAttemptReason.BAD_CREDENTIALS.name()
+            );
+        }
+
+        // Con device: registrar intento y mostrar contador
+        accountLockService.logFailedAttempt(user, AuthAttemptReason.BAD_CREDENTIALS);
+
+        // Verificar y bloquear cuenta si es necesario después de fallo
+        boolean wasBlocked = accountLockService.checkAndBlockIfNeeded(user);
+
+        // Si ya quedó bloqueada, responder 403 inmediatamente
+        if (wasBlocked) {
+            logger.warn("Cuenta bloqueada automáticamente tras intento fallido | userId={}", user.getUseId());
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                AuthAttemptReason.ACCOUNT_BLOCKED.name()
+            );
+        }
+
+        // Calcular intentos restantes
+        int remainingAttempts = accountLockService.calculateRemainingAttempts(user);
+        logger.debug("Intentos restantes: {} | userId={}", remainingAttempts, user.getUseId());
+
+        if (remainingAttempts == 0) {
+            logger.warn("Bloqueando cuenta: intentos agotados | userId={}", user.getUseId());
+            accountLockService.blockAccount(user);
+            accountLockService.logFailedAttempt(user, AuthAttemptReason.ACCOUNT_BLOCKED);
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                AuthAttemptReason.ACCOUNT_BLOCKED.name()
+            );
+        }
+
+        // Lanzar excepción con información de intentos restantes
+        throw new ResponseStatusException(
+            HttpStatus.UNAUTHORIZED,
+            AuthAttemptReason.BAD_CREDENTIALS.name() + "|remainingAttempts=" + remainingAttempts
+        );
     }
 
     // ----------------- Helpers - Login Flow -----------------
@@ -205,8 +253,7 @@ public class AuthService {
         String token = jwtService.generate(
                 String.valueOf(user.getUseId()),
                 safeFingerprint,
-                jti.toString(),
-                user.getUseRole().name() // Agregar rol del usuario (USER o ADMIN)
+                jti.toString()
         );
         Instant exp = jwtService.getExpiration(token);
 
@@ -232,8 +279,7 @@ public class AuthService {
         return new LoginResponse(
                 token,
                 exp.toString(),
-                session.getSesId().toString(),
-                user.getUseRole().name() // Incluir rol del usuario (USER o ADMIN)
+                session.getSesId().toString()
         );
     }
 
@@ -243,6 +289,7 @@ public class AuthService {
      * @param user Usuario que intenta autenticarse
      * @param ex Excepción lanzada por deviceService
      * @return ResponseEntity con código 403 y razón del error
+     * @throws ResponseStatusException si el error no es de autorización de dispositivo
      * @throws ResponseStatusException si el error no es de autorización de dispositivo
      */
     private ResponseEntity<?> handleDeviceAuthorizationError(User user, ResponseStatusException ex) {
@@ -260,7 +307,7 @@ public class AuthService {
         }
 
         if (AuthAttemptReason.DEVICE_UNAUTHORIZED.name().equals(reason)) {
-            logFailedAttempt(user, AuthAttemptReason.DEVICE_UNAUTHORIZED);
+            accountLockService.logFailedAttempt(user, AuthAttemptReason.DEVICE_UNAUTHORIZED);
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("error", AuthAttemptReason.DEVICE_UNAUTHORIZED.name()));
         }
@@ -287,31 +334,6 @@ public class AuthService {
         }
     }
 
-
-    // ----------------- Helpers - Logging -----------------
-
-    /**
-     * Registra un intento fallido obteniendo automáticamente el dispositivo del usuario.
-     * Sigue la cadena: Session -> AuthAttempt -> Device -> User
-     */
-    private void logFailedAttempt(User user, AuthAttemptReason reason) {
-        deviceService.findByUserId(user.getUseId())
-                .ifPresent(dev -> authAttemptService.log(dev, false, reason));
-    }
-
-    // ----------------- Helpers - Validation -----------------
-
-    /** Valida que la contraseña proporcionada coincida con la almacenada en el registro del usuario. */
-    private boolean isValidPassword(User user, String rawPassword) {
-        var register = user.getRegister();
-
-        if (register == null || isBlank(register.getRegHashedLoginPassword())) {
-            return false;
-        }
-
-        return passwordEncoder.matches(rawPassword, register.getRegHashedLoginPassword());
-    }
-
     // ----------------- Helpers - Utilities -----------------
 
     private static boolean isBlank(String s) {
@@ -331,37 +353,36 @@ public class AuthService {
         return authHeader.substring(BEARER_PREFIX.length()).trim();
     }
 
+    // ----------------- Helpers - MDC Management -----------------
+
     /**
-     * Calcula los intentos de login restantes antes del bloqueo de cuenta.
+     * Configura el contexto MDC con información inicial del request de login.
      *
-     * @param user Usuario para el cual calcular intentos restantes
-     * @return Número de intentos restantes (0-maxFailedAttempts)
+     * @param identifier Email o RUT del usuario
+     * @param deviceFingerprint Fingerprint del dispositivo
      */
-    private int calculateRemainingAttempts(User user) {
-        // El contador se reinicia con el último intento exitoso.
-        // Se cuenta desde max(último_exitoso, ahora-lockoutWindowMinutes) para que
-        // tras un login correcto vuelva al máximo en el siguiente fallo.
-        Instant windowStart = Instant.now().minus(lockoutWindowMinutes, java.time.temporal.ChronoUnit.MINUTES);
-        Instant lastSuccess = authAttemptService.findLastSuccessAt(user.getUseId());
-
-        // Reiniciar desde el último éxito de login (o lockoutWindowMinutes atrás, lo que sea más reciente)
-        Instant since = (lastSuccess != null && lastSuccess.isAfter(windowStart))
-                ? lastSuccess
-                : windowStart;
-
-        long failedCount = authAttemptService.countFailedAttemptsSince(user.getUseId(), since);
-        int remaining = Math.max(0, maxFailedAttempts - (int) failedCount);
-
-        logger.debug("Intentos restantes calculados | userId={} | failedCount={} | remaining={}",
-                user.getUseId(), failedCount, remaining);
-
-        return remaining;
+    private void setupLoginMDC(String identifier, String deviceFingerprint) {
+        MDC.put("identifier", identifier);
+        MDC.put("deviceFingerprint", deviceFingerprint != null ? deviceFingerprint : "N/A");
     }
 
-    // ----------------- Helpers - Response Builders -----------------
+    /**
+     * Agrega información del usuario autenticado al contexto MDC.
+     *
+     * @param user Usuario autenticado
+     */
+    private void addUserToMDC(User user) {
+        MDC.put("userId", String.valueOf(user.getUseId()));
+        MDC.put("email", user.getRegister().getRegEmail());
+    }
 
-    /** Construye respuesta 401 Unauthorized genérica para errores de logout. */
-    private static ResponseEntity<Map<String, Object>> unauthorizedLogout() {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "UNAUTHORIZED"));
+    /**
+     * Limpia todo el contexto MDC relacionado con el login.
+     */
+    private void clearLoginMDC() {
+        MDC.remove("identifier");
+        MDC.remove("deviceFingerprint");
+        MDC.remove("userId");
+        MDC.remove("email");
     }
 }

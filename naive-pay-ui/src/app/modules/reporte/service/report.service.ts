@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { ReportFilterDTO, SpendingReport, Transaction } from '../domain/reporte';
+import { HttpClient } from '@angular/common/http';
+import { ReportFilterDTO, SpendingReport, Transaction } from '../domain/report';
 
 @Injectable({ providedIn: 'root' })
-export class ReporteService {
+export class ReportService {
     private baseReports  = 'http://localhost:8080/api/reports';
     private baseSpending = `${this.baseReports}/spending`;
     private baseUsage    = `${this.baseReports}/usage`;

@@ -21,7 +21,11 @@ public class PasswordRecovery {
     private Long pasId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "use_id", nullable = false)
+    @JoinColumn(
+        name = "use_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "fk_password_recovery_user")
+    )
     private User user;
 
     @Column(name = "pas_code", nullable = false, length = 40)

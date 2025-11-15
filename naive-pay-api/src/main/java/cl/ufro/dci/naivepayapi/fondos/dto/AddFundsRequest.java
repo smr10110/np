@@ -1,5 +1,9 @@
 package cl.ufro.dci.naivepayapi.fondos.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.math.BigDecimal;
 
 /**
@@ -21,78 +25,13 @@ import java.math.BigDecimal;
  * @version 1.0
  * @since 2025-10-06
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AddFundsRequest {
     /** ID of the user requesting the fund load */
     private Long userId;
     
     /** Amount to add to the account (must be greater than zero) */
     private BigDecimal amount;
-
-    /**
-     * Default constructor.
-     */
-    public AddFundsRequest() {
-    }
-
-    /**
-     * Constructor with all fields.
-     * 
-     * @param userId the user ID
-     * @param amount the amount to add
-     */
-    public AddFundsRequest(Long userId, BigDecimal amount) {
-        this.userId = userId;
-        this.amount = amount;
-    }
-
-    // Getters and Setters
-    
-    /**
-     * Gets the user ID.
-     * 
-     * @return the user ID
-     */
-    public Long getUserId() {
-        return userId;
-    }
-
-    /**
-     * Sets the user ID.
-     * 
-     * @param userId the user ID
-     */
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    /**
-     * Gets the amount to add.
-     * 
-     * @return the amount to add
-     */
-    public BigDecimal getAmount() {
-        return amount;
-    }
-
-    /**
-     * Sets the amount to add.
-     * 
-     * @param amount the amount (must be greater than zero)
-     */
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
-    }
-
-    /**
-     * Generates a String representation of the object.
-     * 
-     * @return a string with the request data
-     */
-    @Override
-    public String toString() {
-        return "AddFundsRequest{" +
-                "userId=" + userId +
-                ", amount=" + amount +
-                '}';
-    }
 }

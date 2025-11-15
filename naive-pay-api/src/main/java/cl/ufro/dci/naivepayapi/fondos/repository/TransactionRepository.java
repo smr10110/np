@@ -1,7 +1,7 @@
 package cl.ufro.dci.naivepayapi.fondos.repository;
 
 import cl.ufro.dci.naivepayapi.fondos.domain.Account;
-import cl.ufro.dci.naivepayapi.fondos.domain.FundTransaction;
+import cl.ufro.dci.naivepayapi.fondos.domain.Transaction;
 import cl.ufro.dci.naivepayapi.fondos.domain.TransactionType;
 import cl.ufro.dci.naivepayapi.fondos.domain.TransactionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,10 +15,10 @@ import java.util.Optional;
 
 /**
  * Repository for fund transaction management in the NaivePay system.
- * Provides data access methods for the FundTransaction entity.
+ * Provides data access methods for the Transaction entity.
  */
 @Repository
-public interface FundTransactionRepository extends JpaRepository<FundTransaction, Long> {
+public interface TransactionRepository extends JpaRepository<Transaction, Long> {
     
     /**
      * Finds all transactions where the account is origin or destination.
@@ -28,7 +28,7 @@ public interface FundTransactionRepository extends JpaRepository<FundTransaction
      * @param destinationAccount destination account (must be same as origin)
      * @return List of transactions ordered by date descending
      */
-    List<FundTransaction> findByOriginAccountOrDestinationAccountOrderByDateTimeDesc(
+    List<Transaction> findByAccIdOriginOrAccIdDestinationOrderByTraDateTimeDesc(
             Account originAccount, 
             Account destinationAccount
     );
@@ -39,7 +39,7 @@ public interface FundTransactionRepository extends JpaRepository<FundTransaction
      * @param originAccount origin account
      * @return List of transactions ordered by date descending
      */
-    List<FundTransaction> findByOriginAccountOrderByDateTimeDesc(Account originAccount);
+    List<Transaction> findByAccIdOriginOrderByTraDateTimeDesc(Account originAccount);
     
     /**
      * Finds transactions by destination account.
@@ -47,7 +47,7 @@ public interface FundTransactionRepository extends JpaRepository<FundTransaction
      * @param destinationAccount destination account
      * @return List of transactions ordered by date descending
      */
-    List<FundTransaction> findByDestinationAccountOrderByDateTimeDesc(Account destinationAccount);
+    List<Transaction> findByAccIdDestinationOrderByTraDateTimeDesc(Account destinationAccount);
     
     /**
      * Finds transactions by type.
@@ -55,7 +55,7 @@ public interface FundTransactionRepository extends JpaRepository<FundTransaction
      * @param type transaction type
      * @return List of transactions of specified type
      */
-    List<FundTransaction> findByTypeOrderByDateTimeDesc(TransactionType type);
+    List<Transaction> findByTraTypeOrderByTraDateTimeDesc(TransactionType type);
     
     /**
      * Finds transactions of an account in a date range.
@@ -65,11 +65,11 @@ public interface FundTransactionRepository extends JpaRepository<FundTransaction
      * @param endDate end date
      * @return List of transactions in range
      */
-    @Query("SELECT t FROM FundTransaction t WHERE " +
-           "(t.originAccount = :account OR t.destinationAccount = :account) " +
-           "AND t.dateTime BETWEEN :startDate AND :endDate " +
-           "ORDER BY t.dateTime DESC")
-    List<FundTransaction> findByAccountAndDateRange(
+    @Query("SELECT t FROM Transaction t WHERE " +
+           "(t.accIdOrigin = :account OR t.accIdDestination = :account) " +
+           "AND t.traDateTime BETWEEN :startDate AND :endDate " +
+           "ORDER BY t.traDateTime DESC")
+    List<Transaction> findByAccountAndDateRange(
             @Param("account") Account account,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
@@ -82,11 +82,11 @@ public interface FundTransactionRepository extends JpaRepository<FundTransaction
      * @param type transaction type
      * @return List of transactions of specified type
      */
-    @Query("SELECT t FROM FundTransaction t WHERE " +
-           "(t.originAccount = :account OR t.destinationAccount = :account) " +
-           "AND t.type = :type " +
-           "ORDER BY t.dateTime DESC")
-    List<FundTransaction> findByAccountAndType(
+    @Query("SELECT t FROM Transaction t WHERE " +
+           "(t.accIdOrigin = :account OR t.accIdDestination = :account) " +
+           "AND t.traType = :type " +
+           "ORDER BY t.traDateTime DESC")
+    List<Transaction> findByAccountAndType(
             @Param("account") Account account,
             @Param("type") TransactionType type
     );
@@ -100,7 +100,7 @@ public interface FundTransactionRepository extends JpaRepository<FundTransaction
      * @return List of transactions matching type and status
      * @since 2.0
      */
-    List<FundTransaction> findByTypeAndStatusOrderByDateTimeDesc(
+    List<Transaction> findByTraTypeAndTraStatusOrderByTraDateTimeDesc(
             TransactionType type, 
             TransactionStatus status
     );
@@ -112,7 +112,7 @@ public interface FundTransactionRepository extends JpaRepository<FundTransaction
      * @return List of transactions with specified status
      * @since 2.0
      */
-    List<FundTransaction> findByStatusOrderByDateTimeDesc(TransactionStatus status);
+    List<Transaction> findByTraStatusOrderByTraDateTimeDesc(TransactionStatus status);
     
     /**
      * Finds a specific transaction by ID and status.
@@ -123,7 +123,7 @@ public interface FundTransactionRepository extends JpaRepository<FundTransaction
      * @return Optional containing the transaction if found
      * @since 2.0
      */
-    Optional<FundTransaction> findByIdAndStatus(Long id, TransactionStatus status);
+    Optional<Transaction> findByTraIdAndTraStatus(Long id, TransactionStatus status);
     
     /**
      * Finds all pending transactions (status = PENDING).
@@ -132,6 +132,6 @@ public interface FundTransactionRepository extends JpaRepository<FundTransaction
      * @return List of pending transactions
      * @since 2.0
      */
-    @Query("SELECT t FROM FundTransaction t WHERE t.status = 'PENDING' ORDER BY t.dateTime DESC")
-    List<FundTransaction> findAllPendingTransactions();
+    @Query("SELECT t FROM Transaction t WHERE t.traStatus = 'PENDING' ORDER BY t.traDateTime DESC")
+    List<Transaction> findAllPendingTransactions();
 }

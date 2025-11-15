@@ -3,6 +3,8 @@ package cl.ufro.dci.naivepayapi.fondos.service;
 import cl.ufro.dci.naivepayapi.fondos.domain.Account;
 import cl.ufro.dci.naivepayapi.fondos.dto.AccountBalanceResponse;
 import cl.ufro.dci.naivepayapi.fondos.repository.AccountRepository;
+import cl.ufro.dci.naivepayapi.registro.domain.User;
+import cl.ufro.dci.naivepayapi.registro.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,23 +44,27 @@ import java.math.BigDecimal;
 public class AccountService {
 
     private final AccountRepository accountRepository;
+    private final UserRepository userRepository;
 
     /**
      * Special system user ID.
      * <p>
      * This account is used as the origin in balance load transactions (LOAD).
      * It has an "infinite" balance to allow any load operation.
+     * In production, this corresponds to the admin@admin.com user (first user created).
      * </p>
      */
-    public static final Long SYSTEM_ACCOUNT_USER_ID = 0L;
+    public static final Long SYSTEM_ACCOUNT_USER_ID = 1L;
 
     /**
      * Constructor with dependency injection.
      * 
      * @param accountRepository the account repository
+     * @param userRepository the user repository
      */
-    public AccountService(AccountRepository accountRepository) {
+    public AccountService(AccountRepository accountRepository, UserRepository userRepository) {
         this.accountRepository = accountRepository;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -74,7 +80,7 @@ public class AccountService {
      */
     @Transactional(readOnly = true)
     public AccountBalanceResponse getAccountBalance(Long userId) {
-        Account account = accountRepository.findByUserId(userId)
+        Account account = accountRepository.findByUserUseId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("No account exists for user with ID: " + userId));
         
         return mapToBalanceResponse(account);
@@ -102,12 +108,16 @@ public class AccountService {
     @Transactional
     public AccountBalanceResponse createAccount(Long userId) {
         // Validate that account doesn't already exist
-        if (accountRepository.existsByUserId(userId)) {
+        if (accountRepository.existsByUserUseId(userId)) {
             throw new IllegalArgumentException("An account already exists for user with ID: " + userId);
         }
 
+        // Get user from database
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+
         // Create new account with initial balance of 0
-        Account newAccount = new Account(userId);
+        Account newAccount = new Account(user);
         Account savedAccount = accountRepository.save(newAccount);
 
         return mapToBalanceResponse(savedAccount);
@@ -125,7 +135,7 @@ public class AccountService {
      */
     @Transactional(readOnly = true)
     public boolean accountExists(Long userId) {
-        return accountRepository.existsByUserId(userId);
+        return accountRepository.existsByUserUseId(userId);
     }
 
     /**
@@ -141,7 +151,7 @@ public class AccountService {
      */
     @Transactional(readOnly = true)
     public Account getAccountByUserId(Long userId) {
-        return accountRepository.findByUserId(userId)
+        return accountRepository.findByUserUseId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("No account exists for user with ID: " + userId));
     }
 
@@ -181,10 +191,20 @@ public class AccountService {
      */
     @Transactional
     public Account getOrCreateSystemAccount() {
-        return accountRepository.findByUserId(SYSTEM_ACCOUNT_USER_ID)
+        return accountRepository.findByUserUseId(SYSTEM_ACCOUNT_USER_ID)
                 .orElseGet(() -> {
-                    Account systemAccount = new Account(SYSTEM_ACCOUNT_USER_ID);
-                    systemAccount.setAvailableBalance(BigDecimal.valueOf(Long.MAX_VALUE)); // "Infinite" balance for system
+                    // Get or create system user
+                    User systemUser = userRepository.findById(SYSTEM_ACCOUNT_USER_ID)
+                            .orElseGet(() -> {
+                                User newSystemUser = new User();
+                                newSystemUser.setUseId(SYSTEM_ACCOUNT_USER_ID);
+                                newSystemUser.setUseNames("Sistema");
+                                newSystemUser.setUseLastNames("NaivePay");
+                                return userRepository.save(newSystemUser);
+                            });
+                    
+                    Account systemAccount = new Account(systemUser);
+                    systemAccount.setAccAvailableBalance(BigDecimal.valueOf(Long.MAX_VALUE)); // "Infinite" balance for system
                     return accountRepository.save(systemAccount);
                 });
     }
@@ -222,10 +242,10 @@ public class AccountService {
      */
     private AccountBalanceResponse mapToBalanceResponse(Account account) {
         return new AccountBalanceResponse(
-                account.getId(),
-                account.getUserId(),
-                account.getAvailableBalance(),
-                account.getLastUpdate()
+                account.getAccId(),
+                account.getUser().getUseId(),
+                account.getAccAvailableBalance(),
+                account.getAccLastUpdate()
         );
     }
 }

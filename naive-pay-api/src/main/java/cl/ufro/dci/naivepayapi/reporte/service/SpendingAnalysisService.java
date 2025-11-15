@@ -1,8 +1,8 @@
 package cl.ufro.dci.naivepayapi.reporte.service;
 
 import cl.ufro.dci.naivepayapi.reporte.dto.ReportFilterDTO;
+import cl.ufro.dci.naivepayapi.reporte.dto.TransactionDTO;
 import org.springframework.stereotype.Service;
-import cl.ufro.dci.naivepayapi.pagos.domain.PaymentTransaction;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  *
  * @since 1.0
  * @see ReportService
- * @see PaymentTransaction
+ * @see TransactionDTO
  */
 @Service
 public class SpendingAnalysisService {
@@ -53,7 +53,7 @@ public class SpendingAnalysisService {
      * <h3>Processing flow</h3>
      * <ol>
      *   <li>Fetch filtered transactions by {@code userId} and {@code filter}.</li>
-     *   <li>Compute total spending (sum of {@link PaymentTransaction#getAmount()}).</li>
+     *   <li>Compute total spending (sum of {@link TransactionDTO#traAmount()}).</li>
      *   <li>Group by key (category or commerce) according to {@code groupBy} and sort by amount descending.</li>
      *   <li>Group by date according to {@code granularity} ("DAY" or "MONTH").</li>
      * </ol>
@@ -76,7 +76,7 @@ public class SpendingAnalysisService {
      *
      * <h3>Edge cases</h3>
      * <ul>
-     *   <li>If {@code getAmount()} is {@code null} in any transaction, it is ignored in summations.</li>
+     *   <li>If {@code traAmount()} is {@code null} in any transaction, it is ignored in summations.</li>
      *   <li>Null or blank keys are transformed to {@code "N/A"}.</li>
      * </ul>
      *
@@ -91,17 +91,17 @@ public class SpendingAnalysisService {
      */
 
     public SpendingReport build(Long userId, ReportFilterDTO filter, String groupBy, String granularity) {
-        List<PaymentTransaction> tx = reportService.getFilteredTransactions(filter, userId);
+        List<TransactionDTO> tx = reportService.getFilteredTransactions(filter, userId);
 
         double total = tx.stream()
-                .map(PaymentTransaction::getAmount)
+                .map(t -> t.traAmount)
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .doubleValue();
 
         LinkedHashMap<String, Double> byCategory = switch (safe(groupBy)) {
-            case "TRANSACTION_TYPE" -> groupByKey(tx, t -> orNA(t.getCategory()));
-            default -> groupByKey(tx, t -> orNA(t.getCommerce()));
+            case "TRANSACTION_TYPE" -> groupByKey(tx, t -> orNA(t.traPaymentCategory));
+            default -> groupByKey(tx, t -> orNA(t.traCommerceName));
         };
 
         List<DateSummary> byDate = switch (safe(granularity)) {
@@ -151,12 +151,12 @@ public class SpendingAnalysisService {
      * @return {@link LinkedHashMap} with keys and totals as {@code double}, sorted from highest to lowest.
      */
     private static LinkedHashMap<String, Double> groupByKey(
-            List<PaymentTransaction> tx,
-            java.util.function.Function<PaymentTransaction, String> classifier
+            List<TransactionDTO> tx,
+            java.util.function.Function<TransactionDTO, String> classifier
     ) {
         Map<String, BigDecimal> sums = tx.stream().collect(Collectors.groupingBy(
                 classifier,
-                Collectors.reducing(BigDecimal.ZERO, PaymentTransaction::getAmount, BigDecimal::add)
+                Collectors.reducing(BigDecimal.ZERO, t -> t.traAmount, BigDecimal::add)
         ));
         return sums.entrySet().stream()
                 .sorted(Map.Entry.<String, BigDecimal>comparingByValue().reversed())
@@ -172,10 +172,10 @@ public class SpendingAnalysisService {
      * @param tx list of transactions; must not be {@code null}.
      * @return immutable list of {@link DateSummary} sorted by ascending date.
      */
-    private static List<DateSummary> groupByDay(List<PaymentTransaction> tx) {
+    private static List<DateSummary> groupByDay(List<TransactionDTO> tx) {
         Map<LocalDate, BigDecimal> sums = tx.stream().collect(Collectors.groupingBy(
-                t -> t.getCreatedAt().toLocalDate(),
-                Collectors.reducing(BigDecimal.ZERO, PaymentTransaction::getAmount, BigDecimal::add)
+                t -> t.traDateTime.toLocalDate(),
+                Collectors.reducing(BigDecimal.ZERO, t -> t.traAmount, BigDecimal::add)
         ));
         return sums.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
@@ -189,10 +189,10 @@ public class SpendingAnalysisService {
      * @param tx list of transactions; must not be {@code null}.
      * @return immutable list of {@link DateSummary} sorted by ascending month.
      */
-    private static List<DateSummary> groupByMonth(List<PaymentTransaction> tx) {
+    private static List<DateSummary> groupByMonth(List<TransactionDTO> tx) {
         Map<YearMonth, BigDecimal> sums = tx.stream().collect(Collectors.groupingBy(
-                t -> YearMonth.from(t.getCreatedAt()),
-                Collectors.reducing(BigDecimal.ZERO, PaymentTransaction::getAmount, BigDecimal::add)
+                t -> YearMonth.from(t.traDateTime),
+                Collectors.reducing(BigDecimal.ZERO, t -> t.traAmount, BigDecimal::add)
         ));
         return sums.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())

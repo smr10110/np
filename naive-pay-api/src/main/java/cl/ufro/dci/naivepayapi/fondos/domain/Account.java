@@ -1,6 +1,8 @@
 package cl.ufro.dci.naivepayapi.fondos.domain;
 
+import cl.ufro.dci.naivepayapi.registro.domain.User;
 import jakarta.persistence.*;
+import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -26,8 +28,9 @@ import java.time.LocalDateTime;
  * @version 1.0
  * @since 2025-10-06
  */
+@Data
 @Entity
-@Table(name = "accounts")
+@Table(name = "account")
 public class Account {
     /**
      * Unique identifier of the account.
@@ -35,14 +38,18 @@ public class Account {
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "acc_id")
+    private Long accId;
 
     /**
-     * Identifier of the user who owns the account.
+     * User who owns the account.
      * Must be unique in the system (one user = one account).
+     * Foreign key relationship to app_user table.
+     * Can be null for system account (user_id = 0).
      */
-    @Column(name = "user_id", nullable = false, unique = true)
-    private Long userId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "use_id", referencedColumnName = "useId", unique = true, nullable = true)
+    private User user;
 
     /**
      * Available balance in the account.
@@ -51,88 +58,41 @@ public class Account {
      * Format: 15 total digits, 2 for decimals (e.g.: 9999999999999.99)
      * </p>
      */
-    @Column(name = "available_balance", precision = 15, scale = 2, nullable = false)
-    private BigDecimal availableBalance = BigDecimal.ZERO;
+    @Column(name = "acc_available_balance", precision = 15, scale = 2, nullable = false)
+    private BigDecimal accAvailableBalance = BigDecimal.ZERO;
 
     /**
      * Date and time when the account was created.
      * This field is immutable after creation.
      */
-    @Column(name = "creation_date", nullable = false, updatable = false)
-    private LocalDateTime creationDate;
+    @Column(name = "acc_creation_date", nullable = false, updatable = false)
+    private LocalDateTime accCreationDate;
 
     /**
      * Date and time of the last balance update.
      * Automatically updated when balance is modified.
      */
-    @Column(name = "last_update", nullable = false)
-    private LocalDateTime lastUpdate;
+    @Column(name = "acc_last_update", nullable = false)
+    private LocalDateTime accLastUpdate;
 
     /**
      * Default constructor.
      * Initializes creation and update dates to current time.
      */
     public Account() {
-        this.creationDate = LocalDateTime.now();
-        this.lastUpdate = LocalDateTime.now();
+        this.accCreationDate = LocalDateTime.now();
+        this.accLastUpdate = LocalDateTime.now();
     }
 
     /**
-     * Constructor with user ID.
+     * Constructor with user.
+     * Recommended constructor for creating accounts.
      * 
-     * @param userId the identifier of the user who owns the account
+     * @param user the user who owns the account (must be persisted)
      */
-    public Account(Long userId) {
+    public Account(User user) {
         this();
-        this.userId = userId;
-    }
-
-    /**
-     * Gets the unique identifier of the account.
-     * 
-     * @return the account ID
-     */
-    public Long getId() { return id; }
-    
-    /**
-     * Sets the account identifier.
-     * 
-     * @param id the new account ID
-     */
-    public void setId(Long id) { this.id = id; }
-
-    /**
-     * Gets the identifier of the owner user.
-     * 
-     * @return the user ID
-     */
-    public Long getUserId() { return userId; }
-    
-    /**
-     * Sets the identifier of the owner user.
-     * 
-     * @param userId the user ID
-     */
-    public void setUserId(Long userId) { this.userId = userId; }
-
-    /**
-     * Gets the available balance in the account.
-     * 
-     * @return the available balance as BigDecimal
-     */
-    public BigDecimal getAvailableBalance() { return availableBalance; }
-    
-    /**
-     * Sets the available balance in the account.
-     * <p>
-     * <b>Note:</b> To update the balance while maintaining audit trail,
-     * use {@link #updateBalance(BigDecimal)} instead.
-     * </p>
-     * 
-     * @param availableBalance the new available balance
-     */
-    public void setAvailableBalance(BigDecimal availableBalance) { 
-        this.availableBalance = availableBalance;
+        this.user = user;
     }
 
     /**
@@ -145,78 +105,8 @@ public class Account {
      * @param newBalance the new balance to set
      */
     public void updateBalance(BigDecimal newBalance) {
-        this.availableBalance = newBalance;
-        this.lastUpdate = LocalDateTime.now();
+        this.accAvailableBalance = newBalance;
+        this.accLastUpdate = LocalDateTime.now();
     }
 
-    /**
-     * Gets the account creation date.
-     * 
-     * @return the creation date and time
-     */
-    public LocalDateTime getCreationDate() { return creationDate; }
-    
-    /**
-     * Sets the creation date.
-     * 
-     * @param creationDate the creation date
-     */
-    public void setCreationDate(LocalDateTime creationDate) { this.creationDate = creationDate; }
-
-    /**
-     * Gets the date of the last balance update.
-     * 
-     * @return the last update date and time
-     */
-    public LocalDateTime getLastUpdate() { return lastUpdate; }
-    
-    /**
-     * Sets the last update date.
-     * 
-     * @param lastUpdate the last update date
-     */
-    public void setLastUpdate(LocalDateTime lastUpdate) { this.lastUpdate = lastUpdate; }
-
-    /**
-     * Compares this account with another object for equality.
-     * <p>
-     * Two accounts are considered equal if they have the same ID.
-     * </p>
-     * 
-     * @param o the object to compare
-     * @return {@code true} if the objects are equal, {@code false} otherwise
-     */
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Account account = (Account) o;
-        return id != null && id.equals(account.id);
-    }
-
-    /**
-     * Calculates the hash code of the account.
-     * 
-     * @return the hash code based on the class
-     */
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
-
-    /**
-     * Generates a String representation of the account.
-     * 
-     * @return a string with the account data
-     */
-    @Override
-    public String toString() {
-        return "Account{" +
-                "id=" + id +
-                ", userId=" + userId +
-                ", availableBalance=" + availableBalance +
-                ", creationDate=" + creationDate +
-                ", lastUpdate=" + lastUpdate +
-                '}';
-    }
 }

@@ -9,7 +9,24 @@ import java.time.LocalDateTime;
 /**
  * Represents a payment transaction entity in the system.
  * Stores information about money transfers between accounts including origin, destination, amounts, and status.
+ * 
+ * @deprecated This entity is being phased out in favor of the unified transaction system.
+ *             All payment transactions are now managed through {@code FundTransaction} 
+ *             in the Funds module (cl.ufro.dci.naivepayapi.fondos.domain.FundTransaction).
+ *             This class is kept for backward compatibility and will be removed in a future version.
+ *             
+ *             <p><b>Migration path:</b></p>
+ *             <ul>
+ *               <li>Use {@code TransactionService.createPendingPayment()} to create payments</li>
+ *               <li>Use {@code TransactionService.getPendingPayments()} to query pending payments</li>
+ *               <li>Use {@code TransactionService.approvePendingPayment()} to approve payments</li>
+ *               <li>Use {@code FundTransactionRepository} to access transaction data</li>
+ *             </ul>
+ * 
+ * @see cl.ufro.dci.naivepayapi.fondos.domain.FundTransaction
+ * @see cl.ufro.dci.naivepayapi.fondos.service.TransactionService
  */
+@Deprecated
 @Data
 @Entity
 public class PaymentTransaction {

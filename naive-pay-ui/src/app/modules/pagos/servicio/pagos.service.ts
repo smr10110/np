@@ -22,12 +22,12 @@ export class PagosService {
   }
 
   // Approve transaction
-  approveTransaction(id: number): Observable<Pagos> {
-    return this.http.put<Pagos>(`${this.apiUrl}/${id}/approve`, {});
+  approveTransaction(id: number): Observable<{success: boolean, transactionId: number, message: string}> {
+    return this.http.put<{success: boolean, transactionId: number, message: string}>(`${this.apiUrl}/${id}/approve`, {});
   }
 
   // Cancel transaction
-  cancelTransaction(id: number): Observable<Pagos> {
-    return this.http.put<Pagos>(`${this.apiUrl}/${id}/cancel`, {});
+  cancelTransaction(id: number): Observable<{success: boolean, transactionId: number, message: string}> {
+    return this.http.put<{success: boolean, transactionId: number, message: string}>(`${this.apiUrl}/${id}/cancel`, {});
   }
 }

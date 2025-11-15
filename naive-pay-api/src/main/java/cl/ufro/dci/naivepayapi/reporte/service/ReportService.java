@@ -1,9 +1,5 @@
 package cl.ufro.dci.naivepayapi.reporte.service;
 
-import cl.ufro.dci.naivepayapi.pagos.domain.PaymentTransaction;
-import cl.ufro.dci.naivepayapi.pagos.domain.PaymentTransactionStatus;
-import cl.ufro.dci.naivepayapi.reporte.dto.ReportFilterDTO;
-import cl.ufro.dci.naivepayapi.reporte.repository.ReportRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -11,6 +7,11 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+
+import cl.ufro.dci.naivepayapi.fondos.domain.TransactionStatus;
+import cl.ufro.dci.naivepayapi.reporte.dto.ReportFilterDTO;
+import cl.ufro.dci.naivepayapi.reporte.dto.TransactionDTO;
+import cl.ufro.dci.naivepayapi.reporte.repository.ReportRepository;
 
 /**
  * Reporting service for retrieving and exporting transactions.
@@ -28,8 +29,6 @@ import java.util.List;
  *   <li>The generated CSV is basic (does not escape commas, quotes, or newlines).
  *       For production, consider using a CSV library (e.g., OpenCSV) and
  *       following RFC 4180.</li>
- *   <li><strong>Potential inconsistency:</strong> the CSV header uses
- *       <em>Description</em> but the code writes {@code getCategory()}. Verify that the field is the expected one.</li>
  * </ul>
  *
  * @since 1.0
@@ -62,28 +61,29 @@ public class ReportService {
      * @return list of transactions that match the filter.
      * @throws ResponseStatusException if no transactions are found ({@code 404 NOT_FOUND}).
      */
-    public List<PaymentTransaction> getFilteredTransactions(ReportFilterDTO filters, Long userId) {
+    public List<TransactionDTO> getFilteredTransactions(ReportFilterDTO filters, Long userId) {
 
         LocalDateTime startDate = filters.getStartDate();
         LocalDateTime endDate = filters.getEndDate();
         BigDecimal minAmount = filters.getMinAmount();
         BigDecimal maxAmount = filters.getMaxAmount();
 
-        List<PaymentTransaction> transactions = reportRepository.findFilteredTransactions(
+        // Convert enum to String for native query
+        String statusString = filters.getStatus() != null ? filters.getStatus().name() : null;
+
+        List<TransactionDTO> transactions = reportRepository.findFilteredTransactions(
                 userId,
                 startDate,
                 endDate,
-                filters.getStatus(),
+                statusString,
                 filters.getCommerce(),
                 filters.getDescription(),
                 minAmount,
                 maxAmount
         );
 
-        for (PaymentTransaction tx : transactions) {
-            if (tx.getOriginAccount().equals(userId)) {
-                tx.setAmount(tx.getAmount().negate());
-            }
+        if (transactions.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No transactions found");
         }
 
         return transactions;
@@ -93,31 +93,30 @@ public class ReportService {
      * Exports a list of transactions to a simple CSV (no quoting/escaping).
      *
      * The CSV contains the columns:
-     * {@code ID,Date,Amount,State,Commerce,Description}.
+     * {@code ID,Date,Amount,Status,Commerce,Category,Type}.
      *
      * <h3>Limitations</h3>
      * <ul>
      *   <li>No escaping rules are applied for commas, quotes, or newlines
      *       in text values (e.g., commerce or description).</li>
-     *   <li>The date format depends on {@code toString()} of {@code createdAt}.</li>
-     *   <li><strong>Verify:</strong> currently {@code getCategory()} is written into the
-     *       "Description" column. Adjust to {@code getDescription()} or change the header accordingly.</li>
+     *   <li>The date format depends on {@code toString()} of the date field.</li>
      * </ul>
      *
      * @param transactions list of transactions to export.
      * @return CSV content as bytes using the JVM default encoding.
      */
-    public byte[] exportToCsv(List<PaymentTransaction> transactions) {
+    public byte[] exportToCsv(List<TransactionDTO> transactions) {
         StringBuilder csv = new StringBuilder();
-        csv.append("ID,Date,Amount,State,Commerce,Description\n");
-        for (PaymentTransaction t : transactions) {
-            csv.append(String.format("%d,%s,%.2f,%s,%s,%s\n",
-                    t.getId(),
-                    t.getCreatedAt(),
-                    t.getAmount(),
-                    t.getStatus(),
-                    t.getCommerce(),
-                    t.getCategory() // <-- Check if it should be getDescription()
+        csv.append("ID,Date,Amount,Status,Commerce,Category,Type\n");
+        for (TransactionDTO t : transactions) {
+            csv.append(String.format("%d,%s,%.2f,%s,%s,%s,%s\n",
+                    t.traId,
+                    t.traDateTime,
+                    t.traAmount,
+                    t.traStatus != null ? t.traStatus : "",
+                    t.traCommerceName != null ? t.traCommerceName : "",
+                    t.traPaymentCategory != null ? t.traPaymentCategory : "",
+                    t.traType
             ));
         }
         return csv.toString().getBytes();

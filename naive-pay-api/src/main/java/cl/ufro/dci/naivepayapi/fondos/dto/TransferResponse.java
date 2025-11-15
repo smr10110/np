@@ -1,5 +1,10 @@
 package cl.ufro.dci.naivepayapi.fondos.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 /**
  * Response DTO for transfer operations.
  * <p>
@@ -18,6 +23,10 @@ package cl.ufro.dci.naivepayapi.fondos.dto;
  * @version 1.0
  * @since 2025-10-06
  */
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class TransferResponse {
     /** Indicates whether the operation was successful */
     private boolean success;
@@ -27,25 +36,6 @@ public class TransferResponse {
     
     /** Transaction ID (null if failed) */
     private Long transactionId;
-
-    /**
-     * Default constructor.
-     */
-    public TransferResponse() {
-    }
-
-    /**
-     * Complete constructor with all fields.
-     * 
-     * @param success indicates whether the operation was successful
-     * @param message descriptive message of the result
-     * @param transactionId ID of the created transaction (null if failed)
-     */
-    public TransferResponse(boolean success, String message, Long transactionId) {
-        this.success = success;
-        this.message = message;
-        this.transactionId = transactionId;
-    }
 
     /**
      * Factory method to create a success response.
@@ -65,75 +55,5 @@ public class TransferResponse {
      */
     public static TransferResponse error(String message) {
         return new TransferResponse(false, message, null);
-    }
-
-    // Getters and Setters
-    
-    /**
-     * Indicates whether the operation was successful.
-     * 
-     * @return {@code true} if successful, {@code false} otherwise
-     */
-    public boolean isSuccess() {
-        return success;
-    }
-
-    /**
-     * Sets the success status of the operation.
-     * 
-     * @param success the success status
-     */
-    public void setSuccess(boolean success) {
-        this.success = success;
-    }
-
-    /**
-     * Gets the descriptive message.
-     * 
-     * @return the result message
-     */
-    public String getMessage() {
-        return message;
-    }
-
-    /**
-     * Sets the descriptive message.
-     * 
-     * @param message the message to set
-     */
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    /**
-     * Gets the ID of the created transaction.
-     * 
-     * @return the transaction ID, or null if the operation failed
-     */
-    public Long getTransactionId() {
-        return transactionId;
-    }
-
-    /**
-     * Sets the transaction ID.
-     * 
-     * @param transactionId the transaction ID
-     */
-    public void setTransactionId(Long transactionId) {
-        this.transactionId = transactionId;
-    }
-
-    /**
-     * Generates a String representation of the object.
-     * 
-     * @return a string with the response data
-     */
-    @Override
-    public String toString() {
-        return "TransferResponse{" +
-                "success=" + success +
-                ", message='" + message + '\'' +
-                ", transactionId=" + transactionId +
-                '}';
     }
 }

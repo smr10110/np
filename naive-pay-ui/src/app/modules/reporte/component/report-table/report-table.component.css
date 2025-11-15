@@ -1,15 +1,27 @@
-/* Estilos para la tabla de reportes */
+/* Styles for the report table */
 table {
     width: 100%;
     border-collapse: collapse;
 }
-th, td {
+
+th,
+td {
     border-bottom: 1px solid #e5e5e5;
     padding: 8px;
     text-align: left;
 }
-.monto-negativo { color: #d32f2f; font-weight: bold; }
-.monto-positivo { color: #388e3c; font-weight: bold; }
+
+.amount-negative {
+    color: #d32f2f;
+    font-weight: bold;
+}
+
+.amount-positive {
+    color: #388e3c;
+    font-weight: bold;
+}
+
+/* Pagination layout */
 .pager {
     width: 100%;
     display: flex;
@@ -18,33 +30,39 @@ th, td {
     gap: 0;
     margin: 16px 0;
 }
+
 .pager-left {
     flex: 1;
     display: flex;
     justify-content: flex-start;
 }
+
 .pager-center {
     flex: 1;
     display: flex;
     justify-content: center;
 }
+
 .pager-right {
     flex: 1;
     display: flex;
     justify-content: flex-end;
 }
+
+/* Export button */
 .export-csv {
     background-color: #28a745 !important;
     color: white !important;
     border: 2px solid #218838;
-    box-shadow: 0 2px 8px rgba(40,167,69,0.15);
-    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.15);
+    letter-spacing: 1px;
     padding: 12px 20px;
     font-size: 15px;
     transition: background-color 0.2s, box-shadow 0.2s;
     font-weight: normal;
 }
+
 .export-csv:hover {
     background-color: #218838 !important;
-    box-shadow: 0 4px 12px rgba(40,167,69,0.25);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.25);
 }

@@ -1,13 +1,14 @@
 package cl.ufro.dci.naivepayapi.reporte.controller;
 
 import org.springframework.security.core.Authentication;
-import cl.ufro.dci.naivepayapi.pagos.domain.PaymentTransaction;
-import cl.ufro.dci.naivepayapi.reporte.dto.ReportFilterDTO;
-import cl.ufro.dci.naivepayapi.reporte.service.ReportService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import cl.ufro.dci.naivepayapi.reporte.dto.TransactionDTO;
+import cl.ufro.dci.naivepayapi.reporte.dto.ReportFilterDTO;
+import cl.ufro.dci.naivepayapi.reporte.service.ReportService;
 import cl.ufro.dci.naivepayapi.reporte.util.AuthUtils;
 
 import java.util.List;
@@ -59,7 +60,7 @@ public class ReportController {
      * The user ID is obtained from {@link Authentication#getName()} and converted to {@link Long}.
      *
      * <h3>Response</h3>
-     * 200 OK with the list of {@link PaymentTransaction}. If there are no results,
+     * 200 OK with the list of {@link TransactionDTO}. If there are no results,
      * {@link ReportService} may throw 404 (NOT_FOUND).
      *
      * @param filters search filters (date range, status, commerce, description, amounts).
@@ -68,12 +69,12 @@ public class ReportController {
      * @throws NumberFormatException if the principal cannot be converted to {@code Long}.
      */
     @PostMapping("/transactions")
-    public ResponseEntity<List<PaymentTransaction>> getTransactions(
+    public ResponseEntity<List<TransactionDTO>> getTransactions(
             @RequestBody ReportFilterDTO filters, Authentication auth) {
 
         Long currentUserId = filters.getUserId() != null ? filters.getUserId() : AuthUtils.getUserId(auth);
 
-        List<PaymentTransaction> transactions =
+        List<TransactionDTO> transactions =
                 reportService.getFilteredTransactions(filters, currentUserId);
         return ResponseEntity.ok(transactions);
     }
@@ -98,7 +99,7 @@ public class ReportController {
     public ResponseEntity<byte[]> exportReportToCsv(@RequestBody ReportFilterDTO filters, Authentication auth) {
         Long currentUserId = AuthUtils.getUserId(auth);
 
-        List<PaymentTransaction> transactions =
+        List<TransactionDTO> transactions =
                 reportService.getFilteredTransactions(filters, currentUserId);
 
         byte[] csvBytes = reportService.exportToCsv(transactions);

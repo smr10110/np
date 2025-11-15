@@ -53,8 +53,8 @@ export const routes: Routes = [
             ,{
                 path: 'report',
                 loadComponent: () =>
-                    import('./modules/reporte/component/reporte/reporte.component')
-                        .then(m => m.ReporteComponent),
+                    import('./modules/reporte/component/reporte/report.component')
+                        .then(m => m.ReportComponent),
                 title: 'Reportes | Naive-Pay',
             },
             // 👇 Ruta de develop (autentificación modularizada)

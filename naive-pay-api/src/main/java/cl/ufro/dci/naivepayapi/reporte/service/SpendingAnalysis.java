@@ -1,6 +1,6 @@
 package cl.ufro.dci.naivepayapi.reporte.service;
 
-import cl.ufro.dci.naivepayapi.pagos.domain.PaymentTransaction;
+import cl.ufro.dci.naivepayapi.fondos.domain.Transaction;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  *   <li>Result map keys preserve the sort order (using {@link LinkedHashMap}).</li>
  * </ul>
  *
- * @see PaymentTransaction
+ * @see Transaction
  * @since 1.0
  */
 public class SpendingAnalysis {
@@ -39,7 +39,7 @@ public class SpendingAnalysis {
     /**
      * Immutable set of source transactions for the analysis.
      */
-    private final List<PaymentTransaction> tx;
+    private final List<Transaction> tx;
 
     /**
      * Creates an analysis instance over a list of transactions.
@@ -49,7 +49,7 @@ public class SpendingAnalysis {
      *
      * @param transactions list of transactions to analyze; may be {@code null}.
      */
-    public SpendingAnalysis(List<PaymentTransaction> transactions) {
+    public SpendingAnalysis(List<Transaction> transactions) {
         this.tx = (transactions == null) ? List.of() : List.copyOf(transactions);
     }
 
@@ -62,7 +62,7 @@ public class SpendingAnalysis {
      */
     public double totalSpent() {
         return tx.stream()
-                .map(PaymentTransaction::getAmount)
+                .map(Transaction::getTraAmount)
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .doubleValue();
@@ -82,8 +82,8 @@ public class SpendingAnalysis {
      */
     public LinkedHashMap<String, Double> byCategory() {
         Map<String, BigDecimal> sums = tx.stream().collect(Collectors.groupingBy(
-                t -> Optional.ofNullable(t.getCommerce()).orElse("N/A"),
-                Collectors.reducing(BigDecimal.ZERO, PaymentTransaction::getAmount, BigDecimal::add)
+                t -> Optional.ofNullable(t.getTraCommerceName()).orElse("N/A"),
+                Collectors.reducing(BigDecimal.ZERO, Transaction::getTraAmount, BigDecimal::add)
         ));
         // sort desc
         return sums.entrySet().stream()
@@ -109,8 +109,8 @@ public class SpendingAnalysis {
      */
     public LinkedHashMap<LocalDate, Double> byDay() {
         Map<LocalDate, BigDecimal> sums = tx.stream().collect(Collectors.groupingBy(
-                t -> t.getCreatedAt().toLocalDate(),
-                Collectors.reducing(BigDecimal.ZERO, PaymentTransaction::getAmount, BigDecimal::add)
+                t -> t.getTraDateTime().toLocalDate(),
+                Collectors.reducing(BigDecimal.ZERO, Transaction::getTraAmount, BigDecimal::add)
         ));
         return sums.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
@@ -135,8 +135,8 @@ public class SpendingAnalysis {
      */
     public LinkedHashMap<YearMonth, Double> byMonth() {
         Map<YearMonth, BigDecimal> sums = tx.stream().collect(Collectors.groupingBy(
-                t -> YearMonth.from(t.getCreatedAt()),
-                Collectors.reducing(BigDecimal.ZERO, PaymentTransaction::getAmount, BigDecimal::add)
+                t -> YearMonth.from(t.getTraDateTime()),
+                Collectors.reducing(BigDecimal.ZERO, Transaction::getTraAmount, BigDecimal::add)
         ));
         return sums.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
