@@ -1,8 +1,0 @@
-[1m[33m[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: All imports are unused[0m [1m[35m[plugin angular-compiler][0m
-
-    src/app/modules/comercio/component/commerce-list/commerce-list.component.ts:9:4:
-[37m      9 │     [32mimports[37m: [
-        ╵     [32m~~~~~~~[0m
-
-[39m[22m
-[1m[33mCannot optimize dependency: [36mflatpickr/dist/flatpickr.css[33m, present in client 'optimizeDeps.include'[39m[22m
