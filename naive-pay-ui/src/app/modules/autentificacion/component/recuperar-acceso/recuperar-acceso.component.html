@@ -1,0 +1,40 @@
+<div class="flex min-h-[calc(100vh-4rem)] items-center justify-center">
+  <div class="w-full max-w-md">
+    <!-- Card -->
+    <div class="overflow-hidden rounded-2xl border border-gray-200 shadow-sm dark:border-gray-800 dark:bg-gray-900 bg-white">
+      <!-- Header -->
+      <div class="bg-indigo-600 px-6 py-4">
+        <h2 class="text-white text-lg font-semibold">Recuperar Acceso</h2>
+      </div>
+
+      <!-- Body -->
+      <div class="p-6 space-y-4">
+        <a
+          routerLink="/auth/recover/device"
+          class="block text-indigo-600 hover:text-indigo-700 font-medium"
+        >
+          Vincular Nuevo Dispositivo
+        </a>
+
+        <a
+          routerLink="/auth/password-recovery"
+          class="block text-indigo-600 hover:text-indigo-700 font-medium"
+        >
+          Olvidé mi contraseña
+        </a>
+      </div>
+    </div>
+    <!-- /Card -->
+
+    <!-- Volver al login -->
+    <div class="mt-4 text-center">
+      <a
+        routerLink="/auth/login"
+        class="text-sm text-indigo-600 hover:underline font-medium"
+      >
+        ← Volver a Iniciar Sesión
+      </a>
+    </div>
+  </div>
+</div>
+

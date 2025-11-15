@@ -1,0 +1,113 @@
+@import '../recompensas/recompensas.component.css';
+
+.promociones-container {
+    padding: 1.5rem;
+}
+
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    background: #f8f9fa;
+    padding: 1.2rem;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+    align-items: flex-end;
+    justify-content: space-between;
+}
+.filters label {
+    font-weight: 600;
+    color: #333;
+}
+.filters input{
+    border: solid 1px;
+    border-radius: 6px;
+}
+.filters select {
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    width: 180px;
+
+}
+.filters button {
+    background-color: #007bff;
+    color: white;
+    padding: 0.6rem 1.2rem;
+    border: none;
+    cursor: pointer;
+    transition: 0.3s;
+    border-radius: 6px;
+}
+.filters button:hover {
+    background-color: #0056b3;
+}
+.promos-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.2rem;
+}
+
+.promo-card {
+    background: white;
+    border-radius: 10px;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.promo-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.promo-card h4 {
+    margin-bottom: 0.5rem;
+    color: #007bff;
+}
+
+.promo-card p {
+    font-size: 0.9rem;
+    color: #333;
+    margin-bottom: 0.4rem;
+}
+
+.state {
+    font-weight: 600;
+}
+
+.state.active {
+    color: #28a745;
+}
+
+.state.finished {
+    color: #dc3545;
+}
+
+.details {
+    margin-top: 0.8rem;
+}
+
+.btn-see-details {
+    background: #17a2b8;
+    color: white;
+}
+
+.btn-see-details:hover {
+    background: #138496;
+}
+
+.details-promo {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.details-promo h3 {
+    color: #007bff;
+}
+
+.details-promo p {
+    margin-bottom: 0.5rem;
+}
