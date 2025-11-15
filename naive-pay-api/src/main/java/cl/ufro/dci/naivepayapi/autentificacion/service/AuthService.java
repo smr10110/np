@@ -4,6 +4,7 @@ import cl.ufro.dci.naivepayapi.autentificacion.domain.Session;
 import cl.ufro.dci.naivepayapi.autentificacion.domain.enums.AuthAttemptReason;
 import cl.ufro.dci.naivepayapi.autentificacion.dto.LoginRequest;
 import cl.ufro.dci.naivepayapi.autentificacion.dto.LoginResponse;
+import cl.ufro.dci.naivepayapi.autentificacion.exception.AuthenticationFailedException;
 import cl.ufro.dci.naivepayapi.registro.domain.User;
 import cl.ufro.dci.naivepayapi.registro.repository.UserRepository;
 import cl.ufro.dci.naivepayapi.dispositivos.service.DeviceService;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -61,31 +63,38 @@ public class AuthService {
             validatePassword(user, req.getPassword());
 
             // 5) Crear sesión autenticada
-            try {
-                LoginResponse response = createAuthenticatedSession(user, deviceFingerprint);
-                logger.info("Login exitoso | userId={} | email={} | jti={}",
-                    user.getUseId(), user.getRegister().getRegEmail(), response.getJti());
-                return ResponseEntity.ok(response);
-            } catch (ResponseStatusException ex) {
-                logger.warn("Login rechazado: error de autorización de dispositivo | userId={} | reason={}",
-                        user.getUseId(), ex.getReason());
-                return handleDeviceAuthorizationError(user, ex);
+            LoginResponse response = createAuthenticatedSession(user, deviceFingerprint);
+            logger.info("Login exitoso | userId={} | email={} | jti={}",
+                user.getUseId(), user.getRegister().getRegEmail(), response.getJti());
+            return ResponseEntity.ok(response);
+
+        } catch (AuthenticationFailedException ex) {
+            // Manejo de errores de autenticación con remainingAttempts
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("error", ex.getReason());
+            if (ex.getRemainingAttempts() != null) {
+                body.put("remainingAttempts", ex.getRemainingAttempts());
             }
+            return ResponseEntity.status(ex.getStatusCode()).body(body);
 
         } catch (ResponseStatusException ex) {
-            // Manejar excepción con remainingAttempts
+            // Manejo de otros errores (dispositivo, cuenta bloqueada, etc.)
             String reason = ex.getReason();
-            if (reason != null && reason.contains("|remainingAttempts=")) {
-                String[] parts = reason.split("\\|remainingAttempts=");
-                int remainingAttempts = Integer.parseInt(parts[1]);
-                return ResponseEntity.status(ex.getStatusCode())
-                        .body(Map.of(
-                                "error", parts[0],
-                                "remainingAttempts", remainingAttempts
-                        ));
+
+            // Errores de dispositivo
+            if (ex.getStatusCode().equals(HttpStatus.FORBIDDEN)) {
+                if (AuthAttemptReason.DEVICE_UNAUTHORIZED.name().equals(reason)) {
+                    User user = findUserByIdentifier(req.getIdentifier());
+                    accountLockService.logFailedAttempt(user, AuthAttemptReason.DEVICE_UNAUTHORIZED);
+                }
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", reason));
             }
 
-            throw ex;
+            // Otros errores
+            return ResponseEntity.status(ex.getStatusCode())
+                    .body(Map.of("error", reason != null ? reason : "UNAUTHORIZED"));
+
         } finally {
             clearLoginMDC();
         }
@@ -228,9 +237,10 @@ public class AuthService {
         }
 
         // Lanzar excepción con información de intentos restantes
-        throw new ResponseStatusException(
+        throw new AuthenticationFailedException(
             HttpStatus.UNAUTHORIZED,
-            AuthAttemptReason.BAD_CREDENTIALS.name() + "|remainingAttempts=" + remainingAttempts
+            AuthAttemptReason.BAD_CREDENTIALS.name(),
+            remainingAttempts
         );
     }
 
