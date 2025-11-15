@@ -85,6 +85,7 @@ public class AuthService {
                         ));
             }
 
+            throw ex;
         } finally {
             clearLoginMDC();
         }
