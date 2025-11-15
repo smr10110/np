@@ -6,7 +6,6 @@ import cl.ufro.dci.naivepayapi.autentificacion.dto.LoginRequest;
 import cl.ufro.dci.naivepayapi.autentificacion.dto.LoginResponse;
 import cl.ufro.dci.naivepayapi.autentificacion.exception.AuthenticationFailedException;
 import cl.ufro.dci.naivepayapi.registro.domain.User;
-import cl.ufro.dci.naivepayapi.registro.repository.UserRepository;
 import cl.ufro.dci.naivepayapi.dispositivos.service.DeviceService;
 import cl.ufro.dci.naivepayapi.dispositivos.domain.Device;
 import io.jsonwebtoken.JwtException;
@@ -34,7 +33,7 @@ public class AuthService {
 
     private final JWTService jwtService;
     private final AuthAttemptService authAttemptService;
-    private final UserRepository userRepo;
+    private final UserResolutionService userResolutionService;
     private final PasswordEncoder passwordEncoder;
     private final AuthSessionService authSessionService;
     private final DeviceService deviceService;
@@ -116,30 +115,11 @@ public class AuthService {
      * @throws ResponseStatusException si el usuario no existe
      */
     User findUserByIdentifier(String identifier) {
-        return resolveUser(identifier)
+        return userResolutionService.resolveUser(identifier)
             .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.UNAUTHORIZED,
                 AuthAttemptReason.USER_NOT_FOUND.name()
             ));
-    }
-
-    // ----------------- Helpers - User Resolution -----------------
-
-    /** Resuelve usuario por email o por RUT con DV. */
-    private Optional<User> resolveUser(String identifier) {
-        final String id = identifier.trim();
-        if (RutUtils.isEmail(id)) {
-            return userRepo.findByRegisterRegEmail(id);
-        }
-        var rut = RutUtils.parseRut(id).orElse(null);
-        if (rut == null) return Optional.empty();
-        try {
-            Long rutNum = Long.parseLong(rut.rut());
-            return userRepo.findByUseRutGeneral(rutNum)
-                    .filter(u -> Character.toUpperCase(u.getUseVerificationDigit()) == rut.dv());
-        } catch (NumberFormatException e) {
-            return Optional.empty();
-        }
     }
 
     /**

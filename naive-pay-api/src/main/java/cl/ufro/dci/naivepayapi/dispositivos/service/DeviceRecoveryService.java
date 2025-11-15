@@ -3,7 +3,7 @@ package cl.ufro.dci.naivepayapi.dispositivos.service;
 import cl.ufro.dci.naivepayapi.autentificacion.dto.LoginResponse;
 import cl.ufro.dci.naivepayapi.autentificacion.service.AuthSessionService;
 import cl.ufro.dci.naivepayapi.autentificacion.service.AuthAttemptService;
-import cl.ufro.dci.naivepayapi.autentificacion.service.RutUtils;
+import cl.ufro.dci.naivepayapi.autentificacion.service.UserResolutionService;
 import cl.ufro.dci.naivepayapi.autentificacion.service.impl.JWTServiceImpl;
 import cl.ufro.dci.naivepayapi.autentificacion.domain.enums.AuthAttemptReason;
 import cl.ufro.dci.naivepayapi.dispositivos.domain.Device;
@@ -11,7 +11,6 @@ import cl.ufro.dci.naivepayapi.dispositivos.domain.DeviceRecovery;
 import cl.ufro.dci.naivepayapi.dispositivos.repository.DeviceRecoveryRepository;
 import cl.ufro.dci.naivepayapi.registro.domain.User;
 import cl.ufro.dci.naivepayapi.registro.domain.Register;
-import cl.ufro.dci.naivepayapi.registro.repository.UserRepository;
 import cl.ufro.dci.naivepayapi.registro.service.EmailService;
 
 import lombok.RequiredArgsConstructor;
@@ -46,7 +45,7 @@ public class DeviceRecoveryService {
     private final JWTServiceImpl jwtService;
     private final AuthSessionService authSessionService;
     private final AuthAttemptService authAttemptService;
-    private final UserRepository userRepo;
+    private final UserResolutionService userResolutionService;
 
     private enum RecoveryStatus {
         Pending, Verified, Expired
@@ -65,7 +64,7 @@ public class DeviceRecoveryService {
     @Transactional
     public DeviceRecovery requestRecovery(String identifier,
                                           String reqFingerprint) {
-        User user = resolveIdentifier(identifier)
+        User user = userResolutionService.resolveUser(identifier)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND"));
 
         Register register = user.getRegister();
@@ -250,53 +249,6 @@ public class DeviceRecoveryService {
         var session = authSessionService.saveActiveSession(jti, initialAuthAttempt, exp);
 
         return new LoginResponse(token, exp.toString(), session.getSesId().toString());
-    }
-
-    /**
-     * Resolves a user by email or RUT.
-     *
-     * @param identifier user identifier (email or RUT)
-     * @return {@link Optional} containing the user if found, otherwise empty
-     */
-    private Optional<User> resolveIdentifier(String identifier) {
-        if (identifier == null || identifier.isBlank()) {
-            return Optional.empty();
-        }
-        String trimmedId = identifier.trim();
-
-        if (RutUtils.isEmail(trimmedId)) {
-            return findByEmail(trimmedId);
-        }
-        return findByRut(trimmedId);
-    }
-
-    /**
-     * Finds a user by email address.
-     *
-     * @param email user email
-     * @return {@link Optional} containing the user if found
-     */
-    private Optional<User> findByEmail(String email) {
-        return userRepo.findByRegisterRegEmail(email);
-    }
-
-    /**
-     * Finds a user by RUT and validates its verification digit (DV) if it matches
-     *
-     * @param rawRut raw RUT string, with or without separators
-     *
-     * @return {@link Optional} containing the user if RUT and DV match
-     */
-    private Optional<User> findByRut(String rawRut) {
-        var rutParsed = RutUtils.parseRut(rawRut).orElse(null);
-        if (rutParsed == null) {return Optional.empty();}
-        try {
-            Long rutNumber = Long.parseLong(rutParsed.rut());
-            char dv = rutParsed.dv(); // "digito-verificador"
-            return userRepo.findByUseRutGeneral(rutNumber)
-                    .filter(user -> Character.toUpperCase(user.getUseVerificationDigit()) == dv);
-        } catch (NumberFormatException e) {
-            return Optional.empty();}
     }
 
 }
