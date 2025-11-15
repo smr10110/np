@@ -85,10 +85,6 @@ public class AuthService {
                         ));
             }
 
-            // Otras excepciones de validación
-            return ResponseEntity.status(ex.getStatusCode())
-                    .body(Map.of("error", reason != null ? reason : "UNAUTHORIZED"));
-
         } finally {
             clearLoginMDC();
         }
