@@ -1,0 +1,66 @@
+@if (loading) {
+    <div style="text-align:center; margin:24px 0;">Cargando...</div>
+}
+@if (error) {
+    <div style="color:#d32f2f; text-align:center; margin:24px 0;">{{ error }}</div>
+}
+
+@if (!loading && !error) {
+    <div>
+        <table>
+            <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Comercio</th>
+                <th>Categoría</th>
+                <th>Estado</th>
+                <th>Ingresos</th>
+                <th>Gastos</th>
+            </tr>
+            </thead>
+            <tbody>
+            @if (filteredTxs.length === 0) {
+                <tr>
+                    <td colspan="6" style="text-align:center; color:#888; font-style:italic; padding:24px 0;">
+                        No hay transacciones para mostrar.
+                    </td>
+                </tr>
+            }
+            @for (tx of pagedTxs; track tx.traId) {
+                <tr>
+                    <td>{{ tx.traDateTime | date: 'shortDate' }}</td>
+                    <td>{{ tx.traCommerceName || '-' }}</td>
+                    <td>{{ tx.traPaymentCategory || '-' }}</td>
+                    <td>{{ tx.traStatus || '-' }}</td>
+                    <td class="amount-positive">
+                        {{ tx.traAmount > 0 ? (tx.traAmount | number: '1.2-2') : '' }}
+                    </td>
+                    <td class="amount-negative">
+                        {{ tx.traAmount < 0 ? (tx.traAmount * -1 | number: '1.2-2') : '' }}
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+
+        @if (filteredTxs.length > 0) {
+            <div class="pager">
+                <div class="pager-left">
+                    @if (currentPage > 1) {
+                        <button (click)="prevPage.emit()">Anterior</button>
+                    }
+                </div>
+
+                <div class="pager-center">
+                    <span class="pager-info">Página {{ currentPage }} de {{ totalPages }}</span>
+                </div>
+
+                <div class="pager-right">
+                    @if (currentPage < totalPages) {
+                        <button (click)="nextPage.emit()">Siguiente</button>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}

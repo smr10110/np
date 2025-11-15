@@ -1,0 +1,46 @@
+<div class="promos-container" *ngIf="!selectedPromo">
+    <h2>Promociones activas</h2>
+
+    <div class="filters">
+        <label>Categoría:</label>
+        <input [(ngModel)]="filter.category" placeholder="Ej: Compras, Canje..." />
+
+        <label>Fecha:</label>
+        <input type="date" [(ngModel)]="filter.date" />
+
+        <label>Estado:</label>
+        <select [(ngModel)]="filter.state">
+            <option value="">Todos</option>
+            <option value="Active">Activa</option>
+            <option value="Finished">Finalizada</option>
+        </select>
+
+        <button (click)="applyFilter()">Aplicar filtro</button>
+        <button (click)="loadPromos()">Limpiar filtro</button>
+
+    </div>
+
+    <div *ngFor="let promo of promotions" class="promo-card">
+        <h3>{{ promo.title }}</h3>
+        <p>{{ promo.category }}</p>
+        <p><strong>Puntos:</strong> {{ promo.points }}</p>
+        <p><strong>Válido hasta:</strong> {{ promo.expire }}</p>
+        <p><strong>Estado:</strong> {{ promo.state }}</p>
+
+        <button (click)="seeDetail(promo)">Ver detalles</button>
+    </div>
+
+    <button class="btn-back" (click)="return()">Volver</button>
+</div>
+
+<div class="promo-details" *ngIf="selectedPromo">
+    <h2>{{ selectedPromo.title }}</h2>
+    <p>{{ selectedPromo.description }}</p>
+    <p><strong>Categoría:</strong> {{ selectedPromo.category }}</p>
+    <p><strong>Beneficios:</strong> {{ selectedPromo.bonus }}</p>
+    <p><strong>Puntos requeridos:</strong> {{ selectedPromo.points }}</p>
+    <p><strong>Válido hasta:</strong> {{ selectedPromo.expire }}</p>
+    <p><strong>Estado:</strong> {{ selectedPromo.state }}</p>
+
+    <button (click)="returnList()">Atrás</button>
+</div>

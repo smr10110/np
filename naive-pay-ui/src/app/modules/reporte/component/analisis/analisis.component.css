@@ -1,0 +1,159 @@
+.analysis-content {
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+    margin-top: 10px;
+}
+
+.analysis-content h3, .analysis-content h4 {
+    color: #007bff;
+    margin-bottom: 8px;
+}
+
+.analysis-content ul {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 12px;
+}
+
+.analysis-content li {
+    padding: 4px 0;
+    font-size: 14px;
+    color: #333;
+}
+
+.analysis-content apx-chart {
+    display: block;
+    margin: 16px 0;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 8px;
+}
+
+/* Tabs container */
+.tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.tabs button {
+    background: #e9ecef;
+    border: none;
+    padding: 8px 24px;
+    border-radius: 20px 20px 0 0;
+    color: #333;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    outline: none;
+}
+
+.tabs button.active {
+    background: #007bff;
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Monthly average highlight box */
+.monthly-average {
+    background: #fffbe6;
+    border: 2px solid #ffe58f;
+    border-radius: 8px;
+    padding: 12px 20px;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    font-size: 1.2em;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.08);
+}
+
+.monthly-average .label {
+    color: #b8860b;
+    font-weight: 600;
+    margin-right: 10px;
+}
+
+.monthly-average .amount {
+    color: #333;
+    font-weight: 700;
+    font-size: 1.3em;
+}
+
+/* Accordion styles */
+.accordion {
+    margin-bottom: 14px;
+    border-radius: 6px;
+    background: #f4f6fa;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.accordion-btn {
+    width: 100%;
+    background: none;
+    border: none;
+    outline: none;
+    padding: 12px 18px;
+    font-size: 1em;
+    font-weight: 600;
+    color: #007bff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.accordion-btn:hover {
+    background: #e9ecef;
+}
+
+.accordion > div {
+    padding: 10px 18px 18px 18px;
+}
+
+/* Average cards row */
+.averages-row {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.average-card {
+    flex: 1;
+    padding: 24px 0;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    font-size: 18px;
+}
+
+/* Expense card (red) */
+.expenses-card {
+    background: #ffeaea;
+    border: 2px solid #ff4d4f;
+    color: #b71c1c;
+}
+
+/* Income card (green) */
+.income-card {
+    background: #eaffea;
+    border: 2px solid #52c41a;
+    color: #237804;
+}
+
+.label {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.amount {
+    font-size: 2em;
+    font-weight: bold;
+}
